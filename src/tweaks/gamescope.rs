@@ -12,7 +12,7 @@ pub struct GamescopeSettings {
     pub force_grab_cursor: bool
 }
 
-#[tweak(name = "gamescope")]
+#[tweak(name = "gamescope", priority = 100)]
 pub fn run(_: &mut Command, prepared_command: &mut Vec<String>) {
     let mut gamescope_cmd: Vec<String> = vec!["gamescope".to_string()];
 

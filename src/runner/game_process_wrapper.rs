@@ -6,9 +6,9 @@ use crate::config::config_loader::LOADED_CONFIG;
 use crate::tweaks::tweak::{list_tweaks, Tweak};
 
 pub fn run_game_process() {
-    if let Some(_) = env::args().nth(1) {
-        let mut prepared_command: Vec<String> = env::args().skip(1).collect();
-
+    if let Some(_) = env::args().nth(2) {
+        let mut prepared_command: Vec<String> = env::args().skip(2).collect();
+        
         let mut process = Command::new("sh");
         process
             .arg("-c")
