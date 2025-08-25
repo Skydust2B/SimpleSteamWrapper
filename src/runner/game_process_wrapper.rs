@@ -31,6 +31,11 @@ pub fn run_game_process() {
             }
         });
 
+        info!("System env vars");
+        env::vars().for_each(|(key, val)|  {
+            info!("{}={}", key, val)
+        });
+
         info!("Running command: {:?}", prepared_command);
 
         info!("With environment variables:");
