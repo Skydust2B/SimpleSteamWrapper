@@ -1,0 +1,39 @@
+use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
+use crate::tweaks::gamescope::GamescopeSettings;
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Config {
+    pub general: General,
+    pub defaults: Options,
+    pub apps: HashMap<String, Options>
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct General {
+    pub theme: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Options {
+    pub selected_gpu: String,
+    pub compat_tool: String,
+    pub gamescope_settings: GamescopeSettings,
+    pub enabled_tweaks: HashMap<String, bool>,
+}
+
+impl Config {
+    pub(crate) fn new() -> Self {
+        Self {
+            general: General {
+                theme: "dark".to_string(),
+            },
+            defaults: Options {
+                selected_gpu: "".to_string(),
+                enabled_tweaks: HashMap::new(),
+                compat_tool: "".to_string(),
+            },
+            apps: HashMap::new()
+        }
+    }
+}

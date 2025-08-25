@@ -1,0 +1,11 @@
+[package]
+name = "tweaks_macro"
+version = "0.1.0"
+authors = ["An Developper <evann.jallet@gmail.com>"]
+edition = "2021"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = "2.0.89"
