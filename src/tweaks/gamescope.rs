@@ -14,30 +14,35 @@ pub struct GamescopeSettings {
 
 #[tweak(name = "gamescope")]
 pub fn run(_: &mut Command, prepared_command: &mut Vec<String>) {
-    let mut index = 0;
-    let mut gamescope_cmd = vec!["gamescope"];
+    let mut gamescope_cmd: Vec<String> = vec!["gamescope".to_string()];
 
     let settings = LOADED_CONFIG.get_config().defaults.gamescope_settings;
     if settings.fullscreen {
-        gamescope_cmd.push("-f");
+        gamescope_cmd.push("-f".to_string());
     }
     if settings.force_grab_cursor {
-        gamescope_cmd.push("--force-grab-cursor")
+        gamescope_cmd.push("--force-grab-cursor".to_string())
     }
     if settings.forced_width > 0 {
-        gamescope_cmd.push("-W");
-        gamescope_cmd.push(settings.forced_width.to_string().as_str());
+        gamescope_cmd.push("-W".to_string());
+        gamescope_cmd.push(settings.forced_width.to_string());
     }
     if settings.forced_height > 0 {
-        gamescope_cmd.push("-H");
-        gamescope_cmd.push(settings.forced_height.to_string().as_str());
+        gamescope_cmd.push("-H".to_string());
+        gamescope_cmd.push(settings.forced_height.to_string());
     }
-    let _ = &["gamescope", "-f", "-W", "1920", "-H", "1080", "-r", "165", "--"]
+    if settings.framerate > 0 {
+        gamescope_cmd.push("-r".to_string());
+        gamescope_cmd.push(settings.framerate.to_string());
+    }
+    gamescope_cmd.push("--".to_string());
+
+    let mut index = 0;
+    let _ = gamescope_cmd
         .iter()
         .for_each(|v| {
             prepared_command
                 .insert(index, v.to_string());
-
             index = index + 1;
         });
 }

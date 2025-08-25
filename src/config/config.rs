@@ -32,6 +32,13 @@ impl Config {
                 selected_gpu: "".to_string(),
                 enabled_tweaks: HashMap::new(),
                 compat_tool: "".to_string(),
+                gamescope_settings: GamescopeSettings {
+                    forced_width: 1920,
+                    forced_height: 1080,
+                    force_grab_cursor: true,
+                    framerate: 165,
+                    fullscreen: true
+                }
             },
             apps: HashMap::new()
         }
