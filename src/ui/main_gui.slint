@@ -3,7 +3,7 @@ import { ComboBox, CheckBox, VerticalBox, HorizontalBox } from "std-widgets.slin
 export component MainGUI inherits Window {
     width: 500px;
     height: 600px;
-    title: "Rust Boilerplate GUI";
+    title: "Simple Steam Wrapper";
 
     in-out property <int> selected_compat_tool_index;
     in property <[string]> compat_tools;
@@ -17,6 +17,7 @@ export component MainGUI inherits Window {
     VerticalBox {
         spacing: 10px;
         padding: 10px;
+        alignment: start;
 
         Text { text: "Choose runner (Use ProtonUpQt to add more)"; }
 
