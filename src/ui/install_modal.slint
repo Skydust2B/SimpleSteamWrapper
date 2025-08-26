@@ -1,0 +1,36 @@
+import { Button } from "std-widgets.slint";
+
+export component InstallerWindow inherits Window {
+    width: 300px;
+    height: 100px;
+
+    VerticalLayout {
+        spacing: 4px;
+        HorizontalLayout {
+            alignment: center;
+            Text {
+                text: "Compat tool not installed in Steam. Do you want to add it?";
+            }
+        }
+        HorizontalLayout {
+            spacing: 10px;
+            alignment: center;
+
+            Button {
+                text: "Yes";
+                clicked => {
+                    root.yes_clicked();
+                }
+            }
+            Button {
+                text: "No";
+                clicked => {
+                    root.no_clicked();
+                }
+            }
+        }
+    }
+
+    callback yes_clicked;
+    callback no_clicked;
+}

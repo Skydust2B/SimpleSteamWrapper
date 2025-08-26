@@ -1,0 +1,45 @@
+import { ComboBox, CheckBox, VerticalBox, HorizontalBox } from "std-widgets.slint";
+
+export component MainGUI inherits Window {
+    width: 500px;
+    height: 600px;
+    title: "Rust Boilerplate GUI";
+
+    in-out property <int> selected_compat_tool_index;
+    in property <[string]> compat_tools;
+
+    in-out property <int> selected_gpu_index;
+    in property <[string]> gpus;
+
+    callback set_tweak_state(string, bool);
+    pure callback get_tweak_state(string) -> bool;
+
+    VerticalBox {
+        spacing: 10px;
+        padding: 10px;
+
+        Text { text: "Choose runner (Use ProtonUpQt to add more)"; }
+
+        ComboBox {
+            model: root.compat_tools;
+            current-index <=> selected_compat_tool_index;
+        }
+
+        select_gpu_check := CheckBox {
+            text: "Select Vulkan GPU (Using multiple env vars)";
+            checked: get_tweak_state("select_gpu");
+            toggled => { set_tweak_state("select_gpu", self.checked); }
+        }
+
+        ComboBox {
+            model: root.gpus;
+            enabled: select_gpu_check.checked;
+            current-index <=> selected_gpu_index;
+        }
+
+        CheckBox { text: "Use NVAPI extensions (PROTON_USE_NVAPI)"; checked: get_tweak_state("proton_nvapi"); toggled => { set_tweak_state("proton_nvapi", self.checked); } }
+        CheckBox { text: "Feral's Gamemode"; checked: get_tweak_state("gamemode"); toggled => { set_tweak_state("gamemode", self.checked); } }
+        CheckBox { text: "Use MangoHUD"; checked: get_tweak_state("mangohud"); toggled => { set_tweak_state("mangohud", self.checked); } }
+        CheckBox { text: "Use Gamescope"; checked: get_tweak_state("gamescope"); toggled => { set_tweak_state("gamescope", self.checked); } }
+    }
+}

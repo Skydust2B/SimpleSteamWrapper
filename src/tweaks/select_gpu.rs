@@ -1,7 +1,7 @@
 use std::process::Command;
 use log::info;
 use tweaks_macro::tweak;
-use crate::gpu::{get_formatted_gpu_id, get_gpu_from_config, GPU};
+use crate::gpu::{get_gpu_from_config, GPU};
 
 #[tweak(name = "select_gpu", priority=0)]
 pub fn run(process: &mut Command, _: &mut Vec<String>) {
@@ -17,7 +17,7 @@ pub fn get_gpu_select_env_vars(gpu: &GPU) -> Vec<(String, String)> {
 
     env_vars.push((
         "VK_LOADER_DEVICE_SELECT".to_string(),
-        get_formatted_gpu_id(gpu)
+        gpu.as_formatted_id()
     ));
     env_vars.push((
         "DXVK_FILTER_DEVICE_NAME".to_string(),

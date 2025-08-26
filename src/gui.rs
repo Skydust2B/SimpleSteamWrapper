@@ -1,117 +1,76 @@
-use std::collections::HashMap;
-use eframe::egui;
-use eframe::glow::Context;
-use egui::ComboBox;
-use log::info;
+use std::cell::RefCell;
+use std::rc::Rc;
+use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
 use crate::config::config_loader::LOADED_CONFIG;
-use crate::gpu::{get_formatted_gpu_id, get_gpu_from_config, list_all_gpus, GPU};
-use crate::runner::compat_tools_wrapper::{get_compat_tool_from_config, list_steam_compat_tools, CompatTool};
+use crate::gpu::{get_gpu_from_config, list_all_gpus};
+use crate::MainGUI;
+use crate::runner::compat_tools_wrapper::{get_compat_tool_from_config, list_steam_compat_tools};
 
-struct MyApp {
-    gpus: Vec<GPU>,
-    selected_gpu_index: usize,
-    compat_tools: Vec<CompatTool>,
-    selected_compat_tool_index: usize
-}
-
-impl Default for MyApp {
-    fn default() -> Self {
-        let gpus = list_all_gpus();
-        for t in &gpus {
-            info!("{:?}", t);
-            info!("0x{:04x}:0x{:04x}", t.vendor_id, t.device_id);
-        }
-
-        let compat_tools = list_steam_compat_tools();
-        let selected_compat_tool_index = compat_tools.iter().position(|ct| get_compat_tool_from_config().name == ct.name).unwrap();
-        let gpu = get_gpu_from_config();
-        let selected_gpu_index = gpus.iter().position(|g| get_formatted_gpu_id(&gpu) == get_formatted_gpu_id(g)).unwrap();
-        Self {
-            gpus,
-            selected_gpu_index,
-            compat_tools,
-            selected_compat_tool_index
-        }
-    }
-}
-
-impl MyApp {
-    pub fn new(_: &eframe::CreationContext<'_>) -> Self {
-        Default::default()
-    }
-}
-
-fn get_safe_entry<'a>(map: &'a mut HashMap<String, bool>, key: &str) -> &'a mut bool {
-    map.entry(key.to_string()).or_insert(false)
-}
-
-impl eframe::App for MyApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.label("Choose runner (Use ProtonUpQt to add more)");
-            ComboBox::from_label("Select Runner")
-                .selected_text(&self.compat_tools[self.selected_compat_tool_index].name)
-                .show_ui(ui, |ui| {
-                    for (i, compat_tool) in self.compat_tools.iter().enumerate() {
-                        ui.selectable_value(&mut self.selected_compat_tool_index, i, &compat_tool.name);
-                    }
-                });
-
-            let mut conf = LOADED_CONFIG.get_config();
-
-            let selected_compat_tool = &self.compat_tools[self.selected_compat_tool_index];
-            conf.defaults.compat_tool = selected_compat_tool.name.to_string();
-
-            let gpu_selection = get_safe_entry(&mut conf.defaults.enabled_tweaks, "select_gpu");
-            ui.checkbox(
-                gpu_selection,
-                "Select Vulkan GPU (Using multiple env vars)"
-            );
-            ui.add_enabled_ui(*gpu_selection, |ui|
-                           ComboBox::from_label("Select")
-                               .selected_text(&self.gpus[self.selected_gpu_index].full_name)
-                               .show_ui(ui, |ui| {
-                                    for (i, gpu) in self.gpus.iter().enumerate() {
-                                        ui.selectable_value(&mut self.selected_gpu_index, i, &gpu.full_name);
-                                    }
-                                }));
-
-            let selected_gpu = &self.gpus[self.selected_gpu_index];
-            conf.defaults.selected_gpu = get_formatted_gpu_id(selected_gpu);
-
-            ui.checkbox(
-                get_safe_entry(&mut conf.defaults.enabled_tweaks, "proton_nvapi"),
-                "Use NVAPI extensions (PROTON_USE_NVAPI)"
-            );
-
-            ui.checkbox(
-                get_safe_entry(&mut conf.defaults.enabled_tweaks, "gamemode"),
-                "Feral's Gamemode"
-            );
-
-            ui.checkbox(
-                get_safe_entry(&mut conf.defaults.enabled_tweaks, "mangohud"),
-                "Use MangoHUD"
-            );
-
-            ui.checkbox(
-                get_safe_entry(&mut conf.defaults.enabled_tweaks, "gamescope"),
-                "Use Gamescope"
-            );
-
-            LOADED_CONFIG.set_config(conf);
-        });
-    }
-    fn on_exit(&mut self, _gl: Option<&Context>) {
-        LOADED_CONFIG.save();
-    }
+fn find_index<T, F>(items: &[T], predicate: F) -> Option<i32>
+where
+    F: Fn(&T) -> bool,
+{
+    items.iter()
+        .position(predicate)
+        .and_then(|idx| i32::try_from(idx).ok())
 }
 
 pub fn show_gui() {
-    let options = eframe::NativeOptions::default();
-    let _ = eframe::run_native(
-        "Rust Boilerplate GUI",
-        options,
-        Box::new(|cc| Ok(Box::new(MyApp::new(cc)))),
-    );
+    let window = MainGUI::new().unwrap();
+
+    let compat_tools = list_steam_compat_tools();
+    let compat_tools_names = compat_tools.iter().map(|ct| ct.name.clone().into()).collect::<Vec<SharedString>>();
+    let model: ModelRc<SharedString> = Rc::new(VecModel::from(compat_tools_names)).into();
+    window.set_compat_tools(model);
+
+    let compat_tool_from_conf = get_compat_tool_from_config();
+    let initial_compat_tool_index = find_index(&compat_tools, |ct| {
+        ct.name == compat_tool_from_conf.name
+    }).unwrap();
+
+    let gpus = list_all_gpus();
+    let gpu_names = gpus.iter().map(|g| g.full_name.clone().into()).collect::<Vec<SharedString>>();
+    let model: ModelRc<SharedString> = Rc::new(VecModel::from(gpu_names)).into();
+    window.set_gpus(model);
+
+    let gpu_from_conf = get_gpu_from_config();
+    let initial_gpu_index = find_index(&gpus, |g| {
+        &gpu_from_conf.as_formatted_id() == &g.as_formatted_id()
+    }).unwrap();
+
+    // Workaround: https://github.com/slint-ui/slint/issues/7632
+    let weak_window = window.as_weak();
+    let _ = slint::invoke_from_event_loop(move || {
+        if let Some(window) = weak_window.upgrade() {
+            window.set_selected_compat_tool_index(initial_compat_tool_index);
+            window.set_selected_gpu_index(initial_gpu_index);
+        }
+    });
+
+    let conf = LOADED_CONFIG.get_config();
+    let windows_tweak_states = Rc::new(RefCell::new(conf.defaults.enabled_tweaks));
+
+    let states_clone = windows_tweak_states.clone();
+    window.on_set_tweak_state(move |tweak_name, enabled| {
+        states_clone.borrow_mut().insert(tweak_name.to_string(), enabled);
+    });
+
+    let states_clone = windows_tweak_states.clone();
+    window.on_get_tweak_state(move |tweak_name| {
+        *states_clone
+            .borrow()
+            .get(&tweak_name.to_string())
+            .unwrap_or(&false)
+    });
+
+    let _ = window.run().unwrap();
+
+    let mut mutable_conf = LOADED_CONFIG.get_config();
+
+    mutable_conf.defaults.compat_tool = compat_tools.get(window.get_selected_compat_tool_index() as usize).unwrap().name.to_string();
+    mutable_conf.defaults.selected_gpu = gpus.get(window.get_selected_gpu_index() as usize).unwrap().as_formatted_id();
+    mutable_conf.defaults.enabled_tweaks = windows_tweak_states.borrow().clone();
+
+    LOADED_CONFIG.set_config(mutable_conf);
+    LOADED_CONFIG.save();
 }
