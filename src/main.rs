@@ -6,6 +6,7 @@ mod gpu;
 mod config;
 mod runner;
 mod install;
+pub(crate) mod tweak;
 
 use std::env;
 use tracing_subscriber::EnvFilter;
