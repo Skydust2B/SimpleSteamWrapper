@@ -30,11 +30,8 @@ const COMPATIBILITY_TOOL_VDF: &str = r#""compatibilitytools"
 
 const TOOL_MANIFEST_VDF: &str = r#""manifest"
 {
-  "version" "2"
-  "commandline" "/SimpleSteamWrapper %verb%"
-  "require_tool_appid" "1628350"
-  "use_sessions" "1"
-  "compatmanager_layer_name" "proton"
+  "commandline" "/SimpleSteamWrapper run"
+  "commandline_waitforexitandrun" "/SimpleSteamWrapper waitforexitandrun"
 }
 "#;
 
