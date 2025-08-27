@@ -1,9 +1,11 @@
 use std::cell::RefCell;
 use std::rc::Rc;
+use serde_yaml::Value;
 use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
-use crate::config::config_loader::LOADED_CONFIG;
+use crate::config::config::Config;
+use crate::config::config_loader::{get_serialized_config_value, reset_serialized_opts_to_defaults, set_serialized_config_value, LOADED_CONFIG};
 use crate::gpu::{get_gpu_from_config, list_all_gpus};
-use crate::MainGUI;
+use crate::{AppConf, MainGUI};
 use crate::runner::compat_tools_wrapper::{get_compat_tool_from_config, list_steam_compat_tools};
 
 fn find_index<T, F>(items: &[T], predicate: F) -> Option<i32>
@@ -47,29 +49,46 @@ pub fn show_gui() {
         }
     });
 
-    let conf = LOADED_CONFIG.get_config();
-    let windows_tweak_states = Rc::new(RefCell::new(conf.defaults.enabled_tweaks));
+    let serialized_conf: Rc<RefCell<Value>> =
+        Rc::new(RefCell::new(serde_yaml::to_value(&LOADED_CONFIG.get_config()).unwrap()));
 
-    let states_clone = windows_tweak_states.clone();
-    window.on_set_tweak_state(move |tweak_name, enabled| {
-        states_clone.borrow_mut().insert(tweak_name.to_string(), enabled);
+    // Getter
+    let get_serialized_conf = Rc::clone(&serialized_conf);
+    window.global::<AppConf>().on_get_opt({
+        let weak_window = window.as_weak();
+        move |key| {
+            let is_editing_defaults = weak_window.upgrade().unwrap().get_editing_defaults();
+            let get_conf = get_serialized_conf.borrow(); // borrow here, inside the closure
+            get_serialized_config_value(&get_conf, &key, is_editing_defaults)
+        }
     });
 
-    let states_clone = windows_tweak_states.clone();
-    window.on_get_tweak_state(move |tweak_name| {
-        *states_clone
-            .borrow()
-            .get(&tweak_name.to_string())
-            .unwrap_or(&false)
+    // Setter
+    let weak_window = window.as_weak();
+    let set_serialized_conf = Rc::clone(&serialized_conf);
+    window.global::<AppConf>().on_set_opt(move |key, val| {
+        let is_editing_defaults = weak_window.upgrade().unwrap().get_editing_defaults();
+        let mut set_conf = set_serialized_conf.borrow_mut();
+        set_serialized_config_value(&mut set_conf, &key, &val, is_editing_defaults);
+    });
+
+    let weak_window = window.as_weak();
+    let set_serialized_conf_defaults = Rc::clone(&serialized_conf);
+    window.on_reset_to_defaults(move || {
+        let window_default = weak_window.upgrade().unwrap();
+        reset_serialized_opts_to_defaults(&mut set_serialized_conf_defaults.borrow_mut(), window_default.get_editing_defaults());
+        window_default.window().request_redraw();
     });
 
     let _ = window.run().unwrap();
+
+    let updated_conf: Config = serde_yaml::from_value((*serialized_conf.borrow()).clone()).unwrap();
+    LOADED_CONFIG.set_config(updated_conf);
 
     let mut mutable_conf = LOADED_CONFIG.get_config();
 
     mutable_conf.defaults.compat_tool = compat_tools.get(window.get_selected_compat_tool_index() as usize).unwrap().name.to_string();
     mutable_conf.defaults.selected_gpu = gpus.get(window.get_selected_gpu_index() as usize).unwrap().as_formatted_id();
-    mutable_conf.defaults.enabled_tweaks = windows_tweak_states.borrow().clone();
 
     LOADED_CONFIG.set_config(mutable_conf);
     LOADED_CONFIG.save();

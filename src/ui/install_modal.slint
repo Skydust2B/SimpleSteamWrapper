@@ -1,36 +1,24 @@
-import { Button } from "std-widgets.slint";
+import { Button, StandardButton, VerticalBox } from "std-widgets.slint";
 
-export component InstallerWindow inherits Window {
-    width: 300px;
-    height: 100px;
-
-    VerticalLayout {
-        spacing: 4px;
-        HorizontalLayout {
-            alignment: center;
-            Text {
-                text: "Compat tool not installed in Steam. Do you want to add it?";
-            }
+export component InstallerWindow inherits Dialog {
+    VerticalBox {
+        Text {
+            horizontal-alignment: center;
+            text: "SimpleSteamWrapper not installed in Steam.";
         }
-        HorizontalLayout {
-            spacing: 10px;
-            alignment: center;
-
-            Button {
-                text: "Yes";
-                clicked => {
-                    root.yes_clicked();
-                }
-            }
-            Button {
-                text: "No";
-                clicked => {
-                    root.no_clicked();
-                }
-            }
+        Text {
+            horizontal-alignment: center;
+            text: "Do you want to add it as a compatibility tool ?";
         }
     }
 
-    callback yes_clicked;
-    callback no_clicked;
+    StandardButton{
+        accessible-role: AccessibleRole.button;
+        kind: yes;
+    }
+
+    StandardButton {
+        accessible-role: AccessibleRole.button;
+        kind: no;
+    }
 }

@@ -1,11 +1,12 @@
-use std::fs;
+use std::{env, fs};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use directories::ProjectDirs;
 use log::info;
 use once_cell::sync::Lazy;
 use serde_yaml::Value;
-use crate::config::config::Config;
+use slint::SharedString;
+use crate::config::config::{Config, Options};
 
 #[derive(Clone)]
 pub(crate) struct ConfigState {
@@ -29,6 +30,12 @@ impl ConfigState {
         state.clone()
     }
 
+    pub(crate) fn get_app_options(&self) -> Options {
+        let state = self.state.lock().unwrap();
+        let steam_app_id = get_steam_app_id().unwrap_or_default();
+        state.apps.get(&steam_app_id).unwrap_or(&state.defaults).clone()
+    }
+
     pub(crate) fn save(&self) {
         info!("Saving config");
         let state = self.get_config();
@@ -39,6 +46,10 @@ impl ConfigState {
 }
 
 pub static LOADED_CONFIG: Lazy<ConfigState> = Lazy::new(ConfigState::new);
+
+pub fn get_steam_app_id() -> Result<String, env::VarError> {
+    env::var("STEAM_COMPAT_APP_ID")
+}
 
 /// Returns the standard config path for the current platform
 fn get_config_path() -> PathBuf {
@@ -106,5 +117,93 @@ fn merge_yaml(mut base: Value, override_: Value) -> Value {
             base
         }
         (_, override_val) => override_val, // Override scalar or array values
+    }
+}
+
+
+/// Traverse a `serde_yaml::Value` by a dotted key and return it as a `SharedString`.
+pub fn get_serialized_config_value(conf: &Value, key: &str, is_editing_defaults: bool) -> SharedString {
+    let steam_app_id = get_steam_app_id().unwrap_or_default();
+
+    let apps_conf = conf
+        .get("apps").unwrap()
+        .as_mapping().unwrap()
+        .get(Value::String(steam_app_id.clone()));
+
+    let options_to_read = if !is_editing_defaults && apps_conf.is_some() {
+        apps_conf.unwrap()
+    } else {
+        conf.get("defaults").unwrap()
+    };
+
+    let val = key
+        .split('.')
+        .fold(Some(options_to_read), |acc, part| acc.and_then(|v| v.get(part)));
+
+    match val {
+        Some(Value::String(s)) => SharedString::from(s.as_str()),
+        Some(Value::Number(n)) => SharedString::from(n.to_string()),
+        Some(Value::Bool(b))   => SharedString::from(b.to_string()),
+        _ => SharedString::default(),
+    }
+}
+
+/// This function might be my downfall
+fn parse_guess(val: String) -> Value {
+    if let Ok(b) = val.parse::<bool>() { Value::Bool(b) }
+    else if let Ok(i) = val.parse::<i64>() { Value::Number(i.into()) }
+    else if let Ok(f) = val.parse::<f64>() {
+        Value::Number(serde_yaml::Number::from(f))
+    } else {
+        Value::String(val.to_string())
+    }
+}
+
+/// Traverse a `serde_yaml::Value` by a dotted key and set it to a new string value.
+/// Handles defaults vs per-app config.
+pub fn set_serialized_config_value(
+    conf: &mut Value,
+    key: &str,
+    val: &str,
+    is_editing_defaults: bool,
+) {
+    let defaults_clone = conf.get("defaults").cloned().unwrap();
+
+    let steam_app_id = get_steam_app_id();
+
+    let mut options_to_edit = if !is_editing_defaults && steam_app_id.is_ok() {
+        let apps = conf
+            .get_mut("apps").unwrap()
+            .as_mapping_mut().unwrap();
+
+        apps.entry(Value::String(steam_app_id.unwrap()))
+            .or_insert(defaults_clone)
+    } else {
+        conf.get_mut("defaults").unwrap()
+    };
+
+    // Traverse down to target field
+    let parts: Vec<&str> = key.split('.').collect();
+    for part in &parts[..parts.len() - 1] {
+        options_to_edit = options_to_edit.get_mut(part).unwrap();
+    }
+
+    // Update the final field
+    let last = parts.last().unwrap();
+    *options_to_edit.get_mut(last).unwrap() = parse_guess(val.to_string());
+}
+
+pub fn reset_serialized_opts_to_defaults(
+    conf: &mut Value,
+    is_editing_defaults: bool
+) {
+    let steam_app_id = get_steam_app_id();
+    if is_editing_defaults {
+        let new_defaults: Value = serde_yaml::to_value(Config::new().defaults).unwrap();
+        *conf.get_mut("defaults").unwrap() = new_defaults;
+    } else {
+        if let Some(map) = conf.get_mut("apps").unwrap().as_mapping_mut() {
+            map.remove(&Value::String(steam_app_id.unwrap().to_string()));
+        }
     }
 }

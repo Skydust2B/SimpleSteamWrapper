@@ -16,7 +16,7 @@ pub struct GamescopeSettings {
 pub fn run(_: &mut Command, prepared_command: &mut Vec<String>) {
     let mut gamescope_cmd: Vec<String> = vec!["gamescope".to_string()];
 
-    let settings = LOADED_CONFIG.get_config().defaults.gamescope_settings;
+    let settings = LOADED_CONFIG.get_app_options().gamescope_settings;
     if settings.fullscreen {
         gamescope_cmd.push("-f".to_string());
     }
