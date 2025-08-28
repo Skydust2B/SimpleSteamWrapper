@@ -190,7 +190,12 @@ pub fn set_serialized_config_value(
 
     // Update the final field
     let last = parts.last().unwrap();
-    *options_to_edit.get_mut(last).unwrap() = parse_guess(val.to_string());
+
+    if let Some(map) = options_to_edit.as_mapping_mut() {
+        map.insert(Value::String(last.to_string()), parse_guess(val.to_string()));
+    } else {
+        *options_to_edit.get_mut(last).expect(format!("The key doesn't seem to exist: {}", &key).as_str()) = parse_guess(val.to_string());
+    }
 }
 
 pub fn reset_serialized_opts_to_defaults(
@@ -201,9 +206,9 @@ pub fn reset_serialized_opts_to_defaults(
     if is_editing_defaults {
         let new_defaults: Value = serde_yaml::to_value(Config::new().defaults).unwrap();
         *conf.get_mut("defaults").unwrap() = new_defaults;
-    } else {
+    } else if steam_app_id.is_ok() {
         if let Some(map) = conf.get_mut("apps").unwrap().as_mapping_mut() {
-            map.remove(&Value::String(steam_app_id.unwrap().to_string()));
+            map.remove(&Value::String(steam_app_id.unwrap().to_string())).unwrap_or_default();
         }
     }
 }

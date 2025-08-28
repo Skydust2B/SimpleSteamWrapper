@@ -40,8 +40,12 @@ export component MainGUI inherits Window {
     in-out property <int> selected_gpu_index;
     in property <[string]> gpus;
 
-    out property <bool> editing_defaults;
+    in-out property <bool> editing_defaults;
     callback reset_to_defaults();
+
+    pure callback get_combobox_gpu_id(int) -> string;
+
+    in property <string> game_app_id: "";
 
     VerticalBox {
         padding: 10px;
@@ -52,6 +56,7 @@ export component MainGUI inherits Window {
         ComboBox {
             model: root.compat_tools;
             current-index <=> selected_compat_tool_index;
+            selected(current-value) => { AppConf.set_opt("compat_tool", current-value) }
         }
 
         select_gpu_check := CheckBox {
@@ -64,6 +69,7 @@ export component MainGUI inherits Window {
             model: root.gpus;
             enabled: select_gpu_check.checked;
             current-index <=> selected_gpu_index;
+            selected(current-value) => { AppConf.set_opt("selected_gpu", get_combobox_gpu_id(self.current-index)) }
         }
 
         CheckBox {
@@ -79,7 +85,7 @@ export component MainGUI inherits Window {
         gamescope_check := CheckBox {
             text: "Use Gamescope";
             checked: AppConf.get_opt_bool("enabled_tweaks.gamescope");
-            toggled => { AppConf.set_opt_bool("gamescope", self.checked); }
+            toggled => { AppConf.set_opt_bool("enabled_tweaks.gamescope", self.checked); }
         }
         if gamescope_check.checked: Rectangle {
             border-width: 1px;
@@ -91,8 +97,8 @@ export component MainGUI inherits Window {
                 HorizontalBox {
                     ComboBox {
                         model: ["Fullscreen", "Windowed"];
-                        current-index: AppConf.get_opt_int("gamescope_settings.fullscreen");
-                        selected(current-value) => { AppConf.set_opt_int("gamescope_settings.fullscreen", self.current-index) }
+                        current-index: AppConf.get_opt_bool("gamescope_settings.fullscreen") ? 0 : 1;
+                        selected(current-value) => { AppConf.set_opt_bool("gamescope_settings.fullscreen", self.current-index == 0) }
                     }
                     CheckBox {
                         text: "Force Grab Cursor";
@@ -166,12 +172,19 @@ export component MainGUI inherits Window {
         }
 
         HorizontalBox {
-            CheckBox {
-                text: "Show defaults";
-                checked <=> editing-defaults;
+            if (!game_app_id.is-empty): HorizontalBox {
+                Text {
+                    font-weight: 600;
+                    text: "AppId: " + game_app_id;
+                }
+                CheckBox {
+                    text: "Show defaults";
+                    checked <=> editing-defaults;
+                }
             }
             Button {
                 text: "Default";
+                clicked => { reset_to_defaults(); }
             }
         }
     }

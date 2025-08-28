@@ -3,7 +3,7 @@ use std::rc::Rc;
 use serde_yaml::Value;
 use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
 use crate::config::config::Config;
-use crate::config::config_loader::{get_serialized_config_value, reset_serialized_opts_to_defaults, set_serialized_config_value, LOADED_CONFIG};
+use crate::config::config_loader::{get_serialized_config_value, get_steam_app_id, reset_serialized_opts_to_defaults, set_serialized_config_value, LOADED_CONFIG};
 use crate::gpu::{get_gpu_from_config, list_all_gpus};
 use crate::{AppConf, MainGUI};
 use crate::runner::compat_tools_wrapper::{get_compat_tool_from_config, list_steam_compat_tools};
@@ -20,6 +20,12 @@ where
 pub fn show_gui() {
     let window = MainGUI::new().unwrap();
 
+    let steam_app_id = get_steam_app_id().unwrap_or("".to_string());
+    window.set_game_app_id(SharedString::from(&steam_app_id));
+    if steam_app_id.is_empty() {
+        window.set_editing_defaults(true);
+    }
+
     let compat_tools = list_steam_compat_tools();
     let compat_tools_names = compat_tools.iter().map(|ct| ct.name.clone().into()).collect::<Vec<SharedString>>();
     let model: ModelRc<SharedString> = Rc::new(VecModel::from(compat_tools_names)).into();
@@ -34,6 +40,11 @@ pub fn show_gui() {
     let gpu_names = gpus.iter().map(|g| g.full_name.clone().into()).collect::<Vec<SharedString>>();
     let model: ModelRc<SharedString> = Rc::new(VecModel::from(gpu_names)).into();
     window.set_gpus(model);
+
+    window.on_get_combobox_gpu_id(|index| {
+        let gpus_for_ids = list_all_gpus();
+        SharedString::from(gpus_for_ids.get(index as usize).unwrap().as_formatted_id())
+    });
 
     let gpu_from_conf = get_gpu_from_config();
     let initial_gpu_index = find_index(&gpus, |g| {
@@ -77,19 +88,14 @@ pub fn show_gui() {
     window.on_reset_to_defaults(move || {
         let window_default = weak_window.upgrade().unwrap();
         reset_serialized_opts_to_defaults(&mut set_serialized_conf_defaults.borrow_mut(), window_default.get_editing_defaults());
-        window_default.window().request_redraw();
+        // Need to reload to force the get functions to rerun.
+        window_default.set_selected_compat_tool_index(initial_compat_tool_index);
+        window_default.set_selected_gpu_index(initial_gpu_index);
     });
 
     let _ = window.run().unwrap();
 
     let updated_conf: Config = serde_yaml::from_value((*serialized_conf.borrow()).clone()).unwrap();
     LOADED_CONFIG.set_config(updated_conf);
-
-    let mut mutable_conf = LOADED_CONFIG.get_config();
-
-    mutable_conf.defaults.compat_tool = compat_tools.get(window.get_selected_compat_tool_index() as usize).unwrap().name.to_string();
-    mutable_conf.defaults.selected_gpu = gpus.get(window.get_selected_gpu_index() as usize).unwrap().as_formatted_id();
-
-    LOADED_CONFIG.set_config(mutable_conf);
     LOADED_CONFIG.save();
 }
