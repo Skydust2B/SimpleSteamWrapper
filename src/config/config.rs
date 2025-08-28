@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
+use crate::tweaks::dxvk_hud_mode::DXVKHUDSettings;
 use crate::tweaks::gamescope::GamescopeSettings;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -19,6 +20,7 @@ pub struct Options {
     pub selected_gpu: String,
     pub compat_tool: String,
     pub gamescope_settings: GamescopeSettings,
+    pub dxvk_hud_settings: DXVKHUDSettings,
     pub enabled_tweaks: HashMap<String, bool>,
 }
 
@@ -38,6 +40,9 @@ impl Config {
                     force_grab_cursor: true,
                     framerate: 165,
                     fullscreen: true
+                },
+                dxvk_hud_settings: DXVKHUDSettings {
+                    mode: "compiler".to_string()
                 }
             },
             apps: HashMap::new()
