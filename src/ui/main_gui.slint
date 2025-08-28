@@ -42,12 +42,17 @@ export component MainGUI inherits Window {
 
     in-out property <bool> editing_defaults;
     callback reset_to_defaults();
+    
+    callback update_wrapper();
 
     pure callback get_combobox_gpu_id(int) -> string;
 
     in property <string> game_app_id: "";
 
-    VerticalBox {
+    in property <bool> reload: false;
+    callback force_reload();
+
+    if(!reload): VerticalBox {
         padding: 10px;
         alignment: start;
 
@@ -171,6 +176,12 @@ export component MainGUI inherits Window {
             toggled => { AppConf.set_opt_bool("enabled_tweaks.mangohud", self.checked); }
         }
 
+        CheckBox {
+            text: "DXVK Hud Mode";
+            checked: AppConf.get_opt_bool("enabled_tweaks.dxvk_hud_mode");
+            toggled => { AppConf.set_opt_bool("enabled_tweaks.dxvk_hud_mode", self.checked); }
+        }
+
         HorizontalBox {
             if (!game_app_id.is-empty): HorizontalBox {
                 Text {
@@ -180,11 +191,16 @@ export component MainGUI inherits Window {
                 CheckBox {
                     text: "Show defaults";
                     checked <=> editing-defaults;
+                    toggled => { force_reload(); }
                 }
             }
             Button {
                 text: "Default";
                 clicked => { reset_to_defaults(); }
+            }
+            Button {
+                text: "Update Wrapper";
+                clicked => { update_wrapper(); }
             }
         }
     }
