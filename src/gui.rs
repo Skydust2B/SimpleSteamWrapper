@@ -1,13 +1,17 @@
 use std::cell::RefCell;
+use std::path::PathBuf;
+use std::process::{Command, Stdio};
 use std::rc::Rc;
+use log::info;
+use rfd::FileDialog;
 use serde_yaml::Value;
-use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
+use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
 use crate::config::config::Config;
 use crate::config::config_loader::{get_serialized_config_value, get_steam_app_id, reset_serialized_opts_to_defaults, set_serialized_config_value, LOADED_CONFIG};
 use crate::gpu::{get_gpu_from_config, list_all_gpus};
 use crate::{AppConf, MainGUI};
 use crate::install::install::install_or_update;
-use crate::runner::compat_tools_wrapper::{get_compat_tool_from_config, list_steam_compat_tools};
+use crate::runner::compat_tools_wrapper::{get_compat_tool_from_config, get_wine_variables, list_steam_compat_tools};
 
 fn find_index<T, F>(items: &[T], predicate: F) -> Option<i32>
 where
@@ -18,15 +22,7 @@ where
         .and_then(|idx| i32::try_from(idx).ok())
 }
 
-pub fn show_gui() {
-    let window = MainGUI::new().unwrap();
-
-    let steam_app_id = get_steam_app_id().unwrap_or("".to_string());
-    window.set_game_app_id(SharedString::from(&steam_app_id));
-    if steam_app_id.is_empty() {
-        window.set_editing_defaults(true);
-    }
-
+fn load_values_from_conf(window: &MainGUI, shared_config: Rc<RefCell<Value>>) {
     let compat_tools = list_steam_compat_tools();
     let compat_tools_names = compat_tools.iter().map(|ct| ct.name.clone().into()).collect::<Vec<SharedString>>();
     let model: ModelRc<SharedString> = Rc::new(VecModel::from(compat_tools_names)).into();
@@ -41,11 +37,6 @@ pub fn show_gui() {
     let gpu_names = gpus.iter().map(|g| g.full_name.clone().into()).collect::<Vec<SharedString>>();
     let model: ModelRc<SharedString> = Rc::new(VecModel::from(gpu_names)).into();
     window.set_gpus(model);
-
-    window.on_get_combobox_gpu_id(|index| {
-        let gpus_for_ids = list_all_gpus();
-        SharedString::from(gpus_for_ids.get(index as usize).unwrap().as_formatted_id())
-    });
 
     let gpu_from_conf = get_gpu_from_config();
     let initial_gpu_index = find_index(&gpus, |g| {
@@ -63,8 +54,81 @@ pub fn show_gui() {
         }
     });
 
+    window.set_env_vars(
+        Rc::new(VecModel::from({
+            let shared_serialized_conf = Rc::clone(&shared_config);
+            let borrowed_serialized_conf = shared_serialized_conf.borrow();
+            let steam_app_id = get_steam_app_id().unwrap_or("".to_string());
+            borrowed_serialized_conf
+                .get("apps").unwrap().get(steam_app_id)
+                .unwrap_or_else(|| borrowed_serialized_conf.get("defaults").unwrap())
+                .get("custom_env_vars")
+                .unwrap()
+                .as_mapping()
+                .unwrap()
+                .iter()
+                .map(|(k, v)| (
+                    SharedString::from(k.as_str().unwrap_or_default()),
+                    SharedString::from(v.as_str().unwrap_or_default()),
+                ))
+                .collect::<Vec<_>>()
+        })).into()
+    );
+}
+
+fn save_custom_values_into_conf(window: &MainGUI, shared_config: Rc<RefCell<Value>>) {
+    let is_editing_default = window.get_editing_defaults();
+
+    window.get_env_vars().iter().for_each({
+        let shared_serialized_conf = Rc::clone(&shared_config);
+        move |(key, val)| {
+            let steam_app_id = get_steam_app_id().unwrap_or("".to_string());
+            let mut borrowed_serialized_conf = shared_serialized_conf.borrow_mut();
+            let mut app_opts = borrowed_serialized_conf
+                .get_mut("apps").unwrap().get_mut(steam_app_id);
+
+            if is_editing_default || app_opts.is_none() {
+                app_opts = borrowed_serialized_conf.get_mut("defaults");
+            }
+            app_opts.unwrap()
+                .get_mut("custom_env_vars").unwrap()
+                .as_mapping_mut().unwrap()
+                .insert(Value::from(key.to_string()), Value::from(val.to_string()));
+        }
+    });
+}
+
+pub fn show_gui() {
+    let window = MainGUI::new().unwrap();
+
+    let steam_app_id = get_steam_app_id().unwrap_or("".to_string());
+    window.set_game_app_id(SharedString::from(&steam_app_id));
+    if steam_app_id.is_empty() {
+        window.set_editing_defaults(true);
+    }
+
     let serialized_conf: Rc<RefCell<Value>> =
         Rc::new(RefCell::new(serde_yaml::to_value(&LOADED_CONFIG.get_config()).unwrap()));
+
+    load_values_from_conf(&window, serialized_conf.clone());
+    window.on_add_env_var({
+        let weak_window = window.as_weak();
+        move || {
+            let env_window = weak_window.upgrade().unwrap();
+            let env_vars = env_window.get_env_vars().iter().collect::<VecModel<(SharedString, SharedString)>>();
+            env_vars.push((SharedString::new(), SharedString::new()));
+            env_window.set_env_vars(ModelRc::from(Rc::new(env_vars)));
+        }
+    });
+    window.on_remove_env_var({
+        let weak_window = window.as_weak();
+        move |val| {
+            let env_window = weak_window.upgrade().unwrap();
+            let env_vars = env_window.get_env_vars().iter().collect::<VecModel<(SharedString, SharedString)>>();
+            env_vars.remove(val as usize);
+            env_window.set_env_vars(ModelRc::from(Rc::new(env_vars)));
+        }
+    });
 
     // Getter
     window.global::<AppConf>().on_get_opt({
@@ -89,11 +153,15 @@ pub fn show_gui() {
     });
 
     window.on_force_reload({
+        let shared_serialized_conf = Rc::clone(&serialized_conf);
         let weak_window = window.as_weak();
         move || {
             let window_reload = weak_window.upgrade().unwrap();
             window_reload.set_reload(true);
             window_reload.window().request_redraw();
+
+            load_values_from_conf(&window_reload, shared_serialized_conf.clone());
+
             let _ = slint::invoke_from_event_loop({
                 let nw = window_reload.as_weak();
                 move || {
@@ -116,13 +184,45 @@ pub fn show_gui() {
         move || {
             let window_default = weak_window.upgrade().unwrap();
             reset_serialized_opts_to_defaults(&mut shared_serialized_conf.borrow_mut(), window_default.get_editing_defaults());
-            window_default.set_selected_compat_tool_index(initial_compat_tool_index);
-            window_default.set_selected_gpu_index(initial_gpu_index);
             window_default.invoke_force_reload();
         }
     });
 
+    window.on_save_custom_values({
+        let shared_serialized_conf = Rc::clone(&serialized_conf);
+        let weak_window = window.as_weak();
+
+        move || {
+            let window_save = weak_window.upgrade().unwrap();
+            save_custom_values_into_conf(&window_save, shared_serialized_conf.clone());
+        }
+    });
+
+    window.on_run_in_prefix(|| {
+        if let Some(path) = FileDialog::new()
+            .add_filter("Windows Executables", &["exe","msi","msix"])
+            .add_filter("Windows Scripts", &["bat", "cmd"])
+            .pick_file() {
+            let compat_tool = get_compat_tool_from_config();
+            let wine_binary_path = PathBuf::from(compat_tool.dir_path).join("files/bin/wine");
+
+            let mut process = Command::new(wine_binary_path);
+            process.envs(get_wine_variables())
+                .arg(path)
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
+                .stdin(Stdio::inherit());
+
+            let status = process
+                .status()
+                .expect("Failed to spawn child");
+
+            info!("Exit status: {}", status);
+        }
+    });
+
     let _ = window.run().unwrap();
+    save_custom_values_into_conf(&window, serialized_conf.clone());
 
     let updated_conf: Config = serde_yaml::from_value((*serialized_conf.borrow()).clone()).unwrap();
     LOADED_CONFIG.set_config(updated_conf);

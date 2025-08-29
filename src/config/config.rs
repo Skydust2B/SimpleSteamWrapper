@@ -22,6 +22,7 @@ pub struct Options {
     pub gamescope_settings: GamescopeSettings,
     pub dxvk_hud_settings: DXVKHUDSettings,
     pub enabled_tweaks: HashMap<String, bool>,
+    pub custom_env_vars: HashMap<String, String>
 }
 
 impl Config {
@@ -43,7 +44,8 @@ impl Config {
                 },
                 dxvk_hud_settings: DXVKHUDSettings {
                     mode: "compiler".to_string()
-                }
+                },
+                custom_env_vars: HashMap::new()
             },
             apps: HashMap::new()
         }

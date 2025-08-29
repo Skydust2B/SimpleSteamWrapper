@@ -20,14 +20,14 @@ impl GPU {
 }
 
 pub fn get_gpu_from_config() -> GPU {
-    let cfg = LOADED_CONFIG.get_config();
+    let cfg = LOADED_CONFIG.get_app_options();
     let all_gpu = list_all_gpus();
 
     if all_gpu.len() == 0 {
         panic!("Unable to find a GPU")
     }
 
-    let retrieved_gpu = all_gpu.iter().find(|gpu| gpu.as_formatted_id() == cfg.defaults.selected_gpu);
+    let retrieved_gpu = all_gpu.iter().find(|gpu| gpu.as_formatted_id() == cfg.selected_gpu);
     if retrieved_gpu.is_none() {
         let found_gpu = all_gpu.first().unwrap().clone();
         warn!("Unable to find selected GPU, using {}", found_gpu.full_name);

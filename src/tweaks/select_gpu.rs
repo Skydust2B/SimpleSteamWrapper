@@ -11,7 +11,6 @@ pub fn run(process: &mut Command, _: &mut Vec<String>) {
     process.envs(get_gpu_select_env_vars(gpu_to_set));
 }
 
-// Gets a hashmap with various env vars made to force the selection of a specific GPU
 pub fn get_gpu_select_env_vars(gpu: &GPU) -> Vec<(String, String)> {
     let mut env_vars = Vec::<(String, String)>::new();
 

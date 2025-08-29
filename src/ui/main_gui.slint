@@ -1,4 +1,4 @@
-import { ComboBox, CheckBox, VerticalBox, HorizontalBox, SpinBox, Button } from "std-widgets.slint";
+import { ComboBox, CheckBox, VerticalBox, HorizontalBox, SpinBox, Button, ScrollView, ListView, LineEdit } from "std-widgets.slint";
 
 export global AppConf  {
     pure callback get_opt(string) -> string;
@@ -52,142 +52,182 @@ export component MainGUI inherits Window {
     in property <bool> reload: false;
     callback force_reload();
 
+    callback remove_env_var(int);
+    callback add_env_var();
+    callback save_custom_values();
+    callback run_in_prefix();
+
+    in-out property <[{ key: string, value: string }]> env_vars: [];
+
     if(!reload): VerticalBox {
-        padding: 10px;
-        alignment: start;
-
-        Text { text: "Choose runner (Use ProtonUpQt to add more)"; }
-
-        ComboBox {
-            model: root.compat_tools;
-            current-index <=> selected_compat_tool_index;
-            selected(current-value) => { AppConf.set_opt("compat_tool", current-value) }
-        }
-
-        select_gpu_check := CheckBox {
-            text: "Select Vulkan GPU (Using multiple env vars)";
-            checked: AppConf.get_opt_bool("enabled_tweaks.select_gpu");
-            toggled => { AppConf.set_opt_bool("enabled_tweaks.select_gpu", self.checked); }
-        }
-
-        ComboBox {
-            model: root.gpus;
-            enabled: select_gpu_check.checked;
-            current-index <=> selected_gpu_index;
-            selected(current-value) => { AppConf.set_opt("selected_gpu", get_combobox_gpu_id(self.current-index)) }
-        }
-
-        CheckBox {
-            text: "Use NVAPI extensions (PROTON_USE_NVAPI)";
-            checked: AppConf.get_opt_bool("enabled_tweaks.proton_nvapi");
-            toggled => { AppConf.set_opt_bool("enabled_tweaks.proton_nvapi", self.checked); }
-        }
-        CheckBox {
-            text: "Feral's Gamemode";
-            checked: AppConf.get_opt_bool("enabled_tweaks.gamemode");
-            toggled => { AppConf.set_opt_bool("enabled_tweaks.gamemode", self.checked); }
-        }
-        gamescope_check := CheckBox {
-            text: "Use Gamescope";
-            checked: AppConf.get_opt_bool("enabled_tweaks.gamescope");
-            toggled => { AppConf.set_opt_bool("enabled_tweaks.gamescope", self.checked); }
-        }
-        if gamescope_check.checked: Rectangle {
-            border-width: 1px;
-            border-radius: 10px;
-            border-color: darkgrey;
-
+        ScrollView {
             VerticalBox {
-                spacing: 0;
-                HorizontalBox {
-                    ComboBox {
-                        model: ["Fullscreen", "Windowed"];
-                        current-index: AppConf.get_opt_bool("gamescope_settings.fullscreen") ? 0 : 1;
-                        selected(current-value) => { AppConf.set_opt_bool("gamescope_settings.fullscreen", self.current-index == 0) }
-                    }
-                    CheckBox {
-                        text: "Force Grab Cursor";
-                        checked: AppConf.get_opt_bool("gamescope_settings.force_grab_cursor");
-                        toggled => { AppConf.set_opt_bool("gamescope_settings.force_grab_cursor", self.checked) }
+                padding: 10px;
+                alignment: start;
+
+                Text { text: "Choose runner (Use ProtonUpQt to add more)"; }
+
+                ComboBox {
+                    model: root.compat_tools;
+                    current-index <=> selected_compat_tool_index;
+                    selected(current-value) => { AppConf.set_opt("compat_tool", current-value) }
+                }
+
+                select_gpu_check := CheckBox {
+                    text: "Select Vulkan GPU (Using multiple env vars)";
+                    checked: AppConf.get_opt_bool("enabled_tweaks.select_gpu");
+                    toggled => { AppConf.set_opt_bool("enabled_tweaks.select_gpu", self.checked); }
+                }
+
+                ComboBox {
+                    model: root.gpus;
+                    enabled: select_gpu_check.checked;
+                    current-index <=> selected_gpu_index;
+                    selected(current-value) => { AppConf.set_opt("selected_gpu", get_combobox_gpu_id(self.current-index)) }
+                }
+
+                CheckBox {
+                    text: "Use NVAPI extensions (PROTON_USE_NVAPI)";
+                    checked: AppConf.get_opt_bool("enabled_tweaks.proton_nvapi");
+                    toggled => { AppConf.set_opt_bool("enabled_tweaks.proton_nvapi", self.checked); }
+                }
+                CheckBox {
+                    text: "Feral's Gamemode";
+                    checked: AppConf.get_opt_bool("enabled_tweaks.gamemode");
+                    toggled => { AppConf.set_opt_bool("enabled_tweaks.gamemode", self.checked); }
+                }
+                gamescope_check := CheckBox {
+                    text: "Use Gamescope";
+                    checked: AppConf.get_opt_bool("enabled_tweaks.gamescope");
+                    toggled => { AppConf.set_opt_bool("enabled_tweaks.gamescope", self.checked); }
+                }
+                if gamescope_check.checked: Rectangle {
+                    border-width: 1px;
+                    border-radius: 10px;
+                    border-color: darkgrey;
+
+                    VerticalBox {
+                        spacing: 0;
+                        HorizontalBox {
+                            ComboBox {
+                                model: ["Fullscreen", "Windowed"];
+                                current-index: AppConf.get_opt_bool("gamescope_settings.fullscreen") ? 0 : 1;
+                                selected(current-value) => { AppConf.set_opt_bool("gamescope_settings.fullscreen", self.current-index == 0) }
+                            }
+                            CheckBox {
+                                text: "Force Grab Cursor";
+                                checked: AppConf.get_opt_bool("gamescope_settings.force_grab_cursor");
+                                toggled => { AppConf.set_opt_bool("gamescope_settings.force_grab_cursor", self.checked) }
+                            }
+                        }
+                        HorizontalBox {
+                            VerticalBox {
+                                property <int> forced_width: AppConf.get_opt_int("gamescope_settings.forced_width");
+
+                                w_checkbox := CheckBox {
+                                    text: "Width";
+                                    checked: forced_width > 0;
+                                    toggled => {
+                                        forced_width = (self.checked) ? 720 : -1;
+                                        AppConf.set_opt_int("gamescope_settings.forced_width", (self.checked) ? 720 : -1);
+                                    }
+                                }
+                                SpinBox {
+                                    enabled: w_checkbox.checked;
+                                    maximum: 9999;
+                                    value: forced_width > -1 ? forced_width : 0;
+                                    edited(value) => { AppConf.set_opt_int("gamescope_settings.forced_width", value) }
+                                }
+                            }
+                            VerticalBox {
+                                property <int> forced_height: AppConf.get_opt_int("gamescope_settings.forced_height");
+
+                                h_checkbox := CheckBox {
+                                    text: "Height";
+                                    checked: forced_height > 0;
+                                    toggled => {
+                                        forced_height = (self.checked) ? 720 : -1;
+                                        AppConf.set_opt_int("gamescope_settings.forced_height", (self.checked) ? 720 : -1);
+                                    }
+                                }
+                                SpinBox {
+                                    enabled: h_checkbox.checked;
+                                    maximum: 9999;
+                                    value: forced_height > -1 ? forced_height : 0;
+                                    edited(value) => { AppConf.set_opt_int("gamescope_settings.forced_height", value) }
+                                }
+                            }
+                            VerticalBox {
+                                property <int> framerate: AppConf.get_opt_int("gamescope_settings.framerate");
+
+                                framerate_check := CheckBox {
+                                    text: "Framerate";
+                                    checked: framerate > 0;
+                                    toggled => {
+                                        framerate = (self.checked) ? 60 : -1;
+                                        AppConf.set_opt_int("gamescope_settings.framerate", (self.checked) ? 60 : -1);
+                                    }
+                                }
+                                SpinBox {
+                                    enabled: framerate_check.checked;
+                                    maximum: 1000;
+                                    value: framerate > -1 ? framerate : 0;
+                                    edited(value) => { AppConf.set_opt_int("gamescope_settings.framerate", value) }
+                                }
+                            }
+                        }
                     }
                 }
-                HorizontalBox {
-                    VerticalBox {
-                        property <int> forced_width: AppConf.get_opt_int("gamescope_settings.forced_width");
 
-                        w_checkbox := CheckBox {
-                            text: "Width";
-                            checked: forced_width > 0;
-                            toggled => {
-                                forced_width = (self.checked) ? 720 : -1;
-                                AppConf.set_opt_int("gamescope_settings.forced_width", (self.checked) ? 720 : -1);
+                CheckBox {
+                    text: "Use MangoHUD";
+                    checked: AppConf.get_opt_bool("enabled_tweaks.mangohud");
+                    toggled => { AppConf.set_opt_bool("enabled_tweaks.mangohud", self.checked); }
+                }
+
+                dxvk_hud_mode := CheckBox {
+                    text: "DXVK Hud Mode";
+                    checked: AppConf.get_opt_bool("enabled_tweaks.dxvk_hud_mode");
+                    toggled => { AppConf.set_opt_bool("enabled_tweaks.dxvk_hud_mode", self.checked); }
+                }
+                if(dxvk_hud_mode.checked): ComboBox {
+                    model: ["compiler","devinfo","fps","full","memory","gpuload","drawcalls","frametimes"];
+                    current-value: AppConf.get_opt("dxvk_hud_settings.mode");
+                    selected(current-value) => { AppConf.set_opt("dxvk_hud_settings.mode", current-value) }
+                }
+
+                custom_env_vars := CheckBox {
+                    text: "Custom env vars";
+                    checked: AppConf.get_opt_bool("enabled_tweaks.custom_env_vars");
+                    toggled => { AppConf.set_opt_bool("enabled_tweaks.custom_env_vars", self.checked); }
+                }
+
+                if(custom_env_vars.checked): Rectangle {
+                     border-width: 1px;
+                     border-radius: 10px;
+                     border-color: darkgrey;
+                     VerticalBox {
+                        if (env_vars.length > 0):
+                        ListView {
+                            preferred-height: 75px;
+                            for row[idx] in env_vars: HorizontalBox {
+                                LineEdit { text: row.key; edited => { row.key = self.text; } }
+                                LineEdit { text: row.value; edited => { row.value = self.text } }
+                                Button {
+                                    text: "−";
+                                    clicked => { remove_env_var(idx); }
+                                }
                             }
                         }
-                        SpinBox {
-                            enabled: w_checkbox.checked;
-                            maximum: 9999;
-                            value: forced_width > -1 ? forced_width : 0;
-                            edited(value) => { AppConf.set_opt_int("gamescope_settings.forced_width", value) }
-                        }
-                    }
-                    VerticalBox {
-                        property <int> forced_height: AppConf.get_opt_int("gamescope_settings.forced_height");
-
-                        h_checkbox := CheckBox {
-                            text: "Height";
-                            checked: forced_height > 0;
-                            toggled => {
-                                forced_height = (self.checked) ? 720 : -1;
-                                AppConf.set_opt_int("gamescope_settings.forced_height", (self.checked) ? 720 : -1);
-                            }
-                        }
-                        SpinBox {
-                            enabled: h_checkbox.checked;
-                            maximum: 9999;
-                            value: forced_height > -1 ? forced_height : 0;
-                            edited(value) => { AppConf.set_opt_int("gamescope_settings.forced_height", value) }
-                        }
-                    }
-                    VerticalBox {
-                        property <int> framerate: AppConf.get_opt_int("gamescope_settings.framerate");
-
-                        framerate_check := CheckBox {
-                            text: "Framerate";
-                            checked: framerate > 0;
-                            toggled => {
-                                framerate = (self.checked) ? 60 : -1;
-                                AppConf.set_opt_int("gamescope_settings.framerate", (self.checked) ? 60 : -1);
-                            }
-                        }
-                        SpinBox {
-                            enabled: framerate_check.checked;
-                            maximum: 1000;
-                            value: framerate > -1 ? framerate : 0;
-                            edited(value) => { AppConf.set_opt_int("gamescope_settings.framerate", value) }
+                        Button {
+                            text: "+ Add Env Var";
+                            clicked => { add_env_var(); }
                         }
                     }
                 }
             }
         }
-
-        CheckBox {
-            text: "Use MangoHUD";
-            checked: AppConf.get_opt_bool("enabled_tweaks.mangohud");
-            toggled => { AppConf.set_opt_bool("enabled_tweaks.mangohud", self.checked); }
-        }
-
-        dxvk_hud_mode := CheckBox {
-            text: "DXVK Hud Mode";
-            checked: AppConf.get_opt_bool("enabled_tweaks.dxvk_hud_mode");
-            toggled => { AppConf.set_opt_bool("enabled_tweaks.dxvk_hud_mode", self.checked); }
-        }
-        if(dxvk_hud_mode.checked): ComboBox {
-            model: ["compiler","devinfo","fps","full","memory","gpuload","drawcalls","frametimes"];
-            current-value: AppConf.get_opt("dxvk_hud_settings.mode");
-            selected(current-value) => { AppConf.set_opt("dxvk_hud_settings.mode", current-value) }
-        }
-
-        HorizontalBox {
+        VerticalBox {
             if (!game_app_id.is-empty): HorizontalBox {
                 Text {
                     font-weight: 600;
@@ -195,17 +235,28 @@ export component MainGUI inherits Window {
                 }
                 CheckBox {
                     text: "Show defaults";
-                    checked <=> editing-defaults;
-                    toggled => { force_reload(); }
+                    checked <=> editing_defaults;
+                    toggled => {
+                        editing_defaults = !editing_defaults;
+                        save_custom_values();
+                        editing_defaults = !editing_defaults;
+                        force_reload();
+                    }
+                }
+                Button {
+                    text: "Run in game prefix";
+                    clicked => { run_in_prefix() }
                 }
             }
-            Button {
-                text: "Default";
-                clicked => { reset_to_defaults(); }
-            }
-            Button {
-                text: "Update Wrapper";
-                clicked => { update_wrapper(); }
+            HorizontalBox {
+                Button {
+                    text: "Default";
+                    clicked => { reset_to_defaults(); }
+                }
+                Button {
+                    text: "Update Wrapper";
+                    clicked => { update_wrapper(); }
+                }
             }
         }
     }
