@@ -79,22 +79,25 @@ fn load_values_from_conf(window: &MainGUI, shared_config: Rc<RefCell<Value>>) {
 fn save_custom_values_into_conf(window: &MainGUI, shared_config: Rc<RefCell<Value>>) {
     let is_editing_default = window.get_editing_defaults();
 
-    window.get_env_vars().iter().for_each({
-        let shared_serialized_conf = Rc::clone(&shared_config);
-        move |(key, val)| {
-            let steam_app_id = get_steam_app_id().unwrap_or("".to_string());
-            let mut borrowed_serialized_conf = shared_serialized_conf.borrow_mut();
-            let mut app_opts = borrowed_serialized_conf
-                .get_mut("apps").unwrap().get_mut(steam_app_id);
+    let shared_serialized_conf = Rc::clone(&shared_config);
+    let steam_app_id = get_steam_app_id().unwrap_or("".to_string());
+    let mut borrowed_serialized_conf = shared_serialized_conf.borrow_mut();
 
-            if is_editing_default || app_opts.is_none() {
-                app_opts = borrowed_serialized_conf.get_mut("defaults");
-            }
-            app_opts.unwrap()
-                .get_mut("custom_env_vars").unwrap()
-                .as_mapping_mut().unwrap()
-                .insert(Value::from(key.to_string()), Value::from(val.to_string()));
-        }
+    let mut app_opts = borrowed_serialized_conf
+        .get_mut("apps").unwrap().get_mut(steam_app_id);
+
+    if is_editing_default || app_opts.is_none() {
+        app_opts = borrowed_serialized_conf.get_mut("defaults");
+    }
+
+    let mapping_opts = app_opts.unwrap()
+        .get_mut("custom_env_vars").unwrap()
+        .as_mapping_mut().unwrap();
+
+    mapping_opts.clear();
+    window.get_env_vars().iter().for_each(|(key, val)|{
+        mapping_opts
+            .insert(Value::from(key.to_string()), Value::from(val.to_string()));
     });
 }
 
