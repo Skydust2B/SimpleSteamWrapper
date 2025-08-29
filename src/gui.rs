@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::rc::Rc;
-use log::info;
+use log::{debug, info};
 use rfd::FileDialog;
 use serde_yaml::Value;
 use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
@@ -113,6 +113,11 @@ pub fn show_gui() {
     let serialized_conf: Rc<RefCell<Value>> =
         Rc::new(RefCell::new(serde_yaml::to_value(&LOADED_CONFIG.get_config()).unwrap()));
 
+    window.on_get_combobox_gpu_id(|v| {
+        let gpus = list_all_gpus();
+        SharedString::from(gpus.get(v as usize).unwrap().as_formatted_id())
+    });
+
     load_values_from_conf(&window, serialized_conf.clone());
     window.on_add_env_var({
         let weak_window = window.as_weak();
@@ -151,6 +156,7 @@ pub fn show_gui() {
         move |key, val| {
             let is_editing_defaults = weak_window.upgrade().unwrap().get_editing_defaults();
             let mut set_conf = shared_serialized_conf.borrow_mut();
+            debug!("set_opt: {:?} -> {:?} (default: {})", &key, &val, is_editing_defaults);
             set_serialized_config_value(&mut set_conf, &key, &val, is_editing_defaults);
         }
     });

@@ -20,10 +20,12 @@ use crate::install::install::check_install;
 slint::include_modules!();
 
 fn main() {
+    let rust_log = env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::new("info,tracing=warn"))
+        .with_env_filter(EnvFilter::new(format!("{},tracing=warn", rust_log)))
         .init();
 
+    info!("RUST_LOG: {}", rust_log);
     load_config();
 
     let is_in_steam_env = env::var("STEAM_COMPAT_APP_ID").and(Ok(true)).unwrap_or(false);

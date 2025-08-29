@@ -42,12 +42,15 @@ pub fn install_or_update() {
 
     if simple_steam_wrapper_path.exists() {
         warn!("Simple Steam Wrapper is installed, removing to update");
+        warn!("{}", simple_steam_wrapper_path.display());
         fs::remove_dir_all(&simple_steam_wrapper_path).expect("Unable to remove Steam Wrapper");
     }
 
+    let current_exe_path = env::current_exe().unwrap();
     fs::create_dir(&simple_steam_wrapper_path).expect("Unable to create the directory");
+    info!("Executable path: {}", current_exe_path.display());
     fs::copy(env::current_exe().unwrap(), simple_steam_wrapper_path.join(SIMPLE_STEAM_WRAPPER_NAME)).expect("Unable to copy the executable");
-
+    info!("Writing vfd files...");
     let compat_tool_vdf_path = simple_steam_wrapper_path.join("compatibilitytool.vdf");
     fs::write(compat_tool_vdf_path, COMPATIBILITY_TOOL_VDF).expect("Unable to write compatibilitytool.vdf");
     let tool_manifest_vdf_path = simple_steam_wrapper_path.join("toolmanifest.vdf");
