@@ -61,8 +61,8 @@ export component MainGUI inherits Window {
 
     if(!reload): VerticalBox {
         ScrollView {
+            viewport-width: self.width;
             VerticalBox {
-                padding: 10px;
                 alignment: start;
 
                 Text { text: "Choose runner (Use ProtonUpQt to add more)"; }
