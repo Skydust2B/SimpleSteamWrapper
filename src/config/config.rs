@@ -29,7 +29,7 @@ impl Config {
     pub(crate) fn new() -> Self {
         Self {
             general: General {
-                theme: "dark".to_string(),
+                theme: "dark".to_string() // Doesn't do anything / Placeholder
             },
             defaults: Options {
                 selected_gpu: "".to_string(),
