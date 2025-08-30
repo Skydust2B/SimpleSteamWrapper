@@ -10,8 +10,9 @@ use crate::config::config::Config;
 use crate::config::config_loader::{get_serialized_config_value, get_steam_app_id, reset_serialized_opts_to_defaults, set_serialized_config_value, LOADED_CONFIG};
 use crate::gpu::{get_gpu_from_config, list_all_gpus};
 use crate::{AppConf, MainGUI};
+use crate::compatibility_tools::compat_tools_wrapper::{get_compat_tool_from_config, get_wine_variables};
+use crate::compatibility_tools::steam::list_steam_compat_tools;
 use crate::install::install::install_or_update;
-use crate::runner::compat_tools_wrapper::{get_compat_tool_from_config, get_wine_variables, list_steam_compat_tools};
 
 fn find_index<T, F>(items: &[T], predicate: F) -> Option<i32>
 where

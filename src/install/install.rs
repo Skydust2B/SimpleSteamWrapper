@@ -1,7 +1,7 @@
 use std::{env, fs};
 use log::{info, warn};
+use crate::compatibility_tools::steam::{get_steam_compat_tools_path, list_steam_compat_tools};
 use crate::install::install_modal::show_install_modal;
-use crate::runner::compat_tools_wrapper::{get_steam_compat_tools_path, list_steam_compat_tools};
 
 const COMPATIBILITY_TOOL_VDF: &str = r#""compatibilitytools"
 {

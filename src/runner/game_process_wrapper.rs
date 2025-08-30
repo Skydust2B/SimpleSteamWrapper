@@ -4,7 +4,8 @@ use std::process::{Command, Stdio};
 use log::info;
 use crate::config::config::{Config};
 use crate::config::config_loader::LOADED_CONFIG;
-use crate::runner::compat_tools_wrapper::{get_compat_tool_from_config, get_steam_path};
+use crate::compatibility_tools::compat_tools_wrapper::{get_compat_tool_from_config};
+use crate::compatibility_tools::steam::get_steam_path;
 use crate::tweak::{list_tweaks, Tweak};
 
 fn to_quoted_string(args: Vec<String>) -> String {
