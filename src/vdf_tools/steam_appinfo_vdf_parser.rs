@@ -21,37 +21,6 @@ pub struct AppInfoFile {
     pub apps: Vec<AppInfoSection>,
 }
 
-
-fn hexdump(prefix: &str, buf: &[u8]) {
-    let mut i = 0;
-    while i < buf.len() {
-        let line = &buf[i..buf.len().min(i + 16)];
-        print!("{prefix}{:08x}: ", i);
-
-        // hex part
-        for b in line {
-            print!("{:02x} ", b);
-        }
-        for _ in 0..(16 - line.len()) {
-            print!("   ");
-        }
-
-        // ascii part
-        print!(" |");
-        for b in line {
-            let c = *b as char;
-            if c.is_ascii_graphic() || c == ' ' {
-                print!("{}", c);
-            } else {
-                print!(".");
-            }
-        }
-        println!("|");
-
-        i += 16;
-    }
-}
-
 /// Parse the string table at the given offset in the file.
 pub fn parse_string_table<R: Read + Seek>(reader: &mut R, offset: u32) -> io::Result<Vec<String>> {
     // Seek to the string table
@@ -102,6 +71,8 @@ pub fn parse_appinfo<R: Read + Seek>(reader: &mut R) -> io::Result<AppInfoFile> 
     }
 
     loop {
+        // Peek at next app_id
+        let pos = reader.stream_position()?;
         let app_id = match reader.read_u32::<LittleEndian>() {
             Ok(id) => id,
             Err(e) => { if e.kind() == io::ErrorKind::UnexpectedEof { break; } else { return Err(e); } }
@@ -109,9 +80,19 @@ pub fn parse_appinfo<R: Read + Seek>(reader: &mut R) -> io::Result<AppInfoFile> 
         if app_id == 0 { break; }
 
         let size = reader.read_u32::<LittleEndian>()?;
-        if size < 36 {
-            let mut skip_buf = vec![0u8; size as usize];
-            let _ = reader.read_exact(&mut skip_buf);
+        if size == 0 {
+            eprintln!("Skipping app {} with invalid size 0", app_id);
+            continue;
+        }
+
+        // Ensure size does not exceed remaining bytes
+        let remaining = reader.seek(SeekFrom::End(0))? - reader.stream_position()?;
+        if size as u64 > remaining {
+            eprintln!(
+                "Skipping app {}: declared size {} > remaining {}",
+                app_id, size, remaining
+            );
+            reader.seek(SeekFrom::Start(pos + 8 + remaining))?;
             continue;
         }
 
@@ -125,22 +106,29 @@ pub fn parse_appinfo<R: Read + Seek>(reader: &mut R) -> io::Result<AppInfoFile> 
         let mut sha1 = [0u8; 20];
         cursor.read_exact(&mut sha1)?;
         let change_number = cursor.read_u32::<LittleEndian>()?;
+
+        // Binary VDF
         let binary_vdf_size = cursor.read_u32::<LittleEndian>()?;
         let remaining_bytes = cursor.get_ref().len().saturating_sub(cursor.position() as usize);
         let vdf_size = std::cmp::min(binary_vdf_size as usize, remaining_bytes);
-
         let mut vdf_buf = vec![0u8; vdf_size];
         cursor.read_exact(&mut vdf_buf)?;
 
-        let vdf = BinaryVdfValue::parse(&mut Cursor::new(vdf_buf)).unwrap_or_else(|_| BinaryVdfValue::default());
+        let vdf = match BinaryVdfValue::parse(&mut Cursor::new(vdf_buf)) {
+            Ok(v) => v,
+            Err(e) => {
+                eprintln!("Failed to parse Binary VDF for app {}: {}", app_id, e);
+                BinaryVdfValue::default()
+            }
+        };
 
         file.apps.push(AppInfoSection {
             app_id,
             info_state,
             last_updated,
-            size,
             access_token,
             sha1,
+            size,
             change_number,
             vdf,
         });

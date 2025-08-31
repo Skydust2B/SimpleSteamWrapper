@@ -1,6 +1,9 @@
+// Binary VDF parser, mainly based on https://github.com/ValveSoftware/source-sdk-2013/blob/master/src/tier1/kvpacker.cpp
+
 use std::collections::HashMap;
 use std::{io};
-use std::io::Read;
+use std::io::{BufRead, BufReader, Cursor, Error, Read};
+use std::string::FromUtf8Error;
 use byteorder::{LittleEndian, ReadBytesExt};
 use log::info;
 
@@ -69,36 +72,87 @@ fn safe_read_u64<R: Read>(reader: &mut R) -> Option<u64> {
     }
 }
 
-fn read_wstring<R: Read>(reader: &mut R) -> io::Result<String> {
-    // Read number of characters as i16
+/// Equivalent to the C++ PACKTYPE_WSTRING case
+fn read_wstring<R: Read>(reader: &mut R) -> io::Result<Option<String>> {
     let length = reader.read_i16::<LittleEndian>()?;
 
-    if length <= 0 {
-        // Valve sometimes writes 0 here → just return empty
-        return Ok(String::new());
+    if length < 0 {
+        // C++: silently ignore → None
+        return Ok(None);
     }
 
-    // Clamp to a reasonable max (say 32k characters)
     let len = length as usize;
-    if len > 32768 {
-        return Err(io::Error::new(io::ErrorKind::InvalidData, format!("Unreasonable WString length {}", len)));
+
+    if len == 0 {
+        return Ok(Some(String::new()));
     }
 
-    let mut chars = Vec::with_capacity(length as usize);
-
-    for _ in 0..length {
-        let codepoint = reader.read_u16::<LittleEndian>()?;
-        chars.push(codepoint);
+    let mut raw_units = Vec::with_capacity(len);
+    for _ in 0..len {
+        let unit = reader.read_u16::<LittleEndian>()?;
+        raw_units.push(unit);
     }
 
-    // Convert UCS-2 codepoints to Rust String
-    Ok(String::from_utf16_lossy(&chars))
+    Ok(Some(String::from_utf16_lossy(&raw_units)))
 }
 
 impl Default for BinaryVdfValue {
     fn default() -> Self {
         BinaryVdfValue::None(HashMap::new()) // wrap the HashMap in the `None` variant
     }
+}
+
+pub fn hex_dump<R: BufRead>(prefix: &str, reader: &mut R, len: usize) {
+    let buffer = reader.fill_buf().unwrap_or(&[]);
+    let dump_len = buffer.len().min(len);
+    let buf = &buffer[..dump_len];
+
+    let mut i = 0;
+    while i < buf.len() {
+        let line = &buf[i..buf.len().min(i + 16)];
+        print!("{prefix}{:08x}: ", i);
+
+        // hex part
+        for b in line {
+            print!("{:02x} ", b);
+        }
+        for _ in 0..(16 - line.len()) {
+            print!("   ");
+        }
+
+        // ascii part
+        print!(" |");
+        for b in line {
+            let c = *b as char;
+            if c.is_ascii_graphic() || c == ' ' {
+                print!("{}", c);
+            } else {
+                print!(".");
+            }
+        }
+        println!("|");
+
+        i += 16;
+    }
+}
+
+fn read_null_terminated_string<R: Read>(reader: &mut R) -> io::Result<String> {
+    let mut bytes = Vec::new();
+
+    loop {
+        let b = match reader.read_u8() {
+            Ok(v) => v,
+            Err(ref e) if e.kind() == io::ErrorKind::UnexpectedEof => break, // EOF
+            Err(e) => return Err(e)
+        };
+        if b == 0 { break; }
+        bytes.push(b);
+    }
+    let utf8 = match String::from_utf8(bytes) {
+        Ok(v) => v,
+        Err(e) => return Err(Error::new(io::ErrorKind::InvalidData, e))
+    };
+    Ok(utf8)
 }
 
 impl BinaryVdfValue {
@@ -108,7 +162,7 @@ impl BinaryVdfValue {
 
     fn parse_internal<R: Read>(reader: &mut R, depth: usize) -> io::Result<Self> {
         if depth > 100 {
-            return Err(io::Error::new(
+            return Err(Error::new(
                 io::ErrorKind::InvalidData,
                 "Binary VDF: maximum recursion depth exceeded",
             ));
@@ -122,41 +176,22 @@ impl BinaryVdfValue {
                 None => break, // EOF
             };
 
-            if type_byte == 0x0B {
+            if type_byte == 0x08 {
                 break; // TYPE_NUMTYPES
             }
 
-            // Read null-terminated name
-            let mut name_bytes = Vec::new();
-            loop {
-                let b = match safe_read_u8(reader) {
-                    Some(v) => v,
-                    None => break, // EOF
-                };
-                if b == 0 { break; }
-                name_bytes.push(b);
-            }
-            let name = String::from_utf8(name_bytes).unwrap_or_default();
+            let name = read_null_terminated_string(reader).unwrap_or_default();
 
             let value = match type_byte {
-                0x00 => Self::parse_internal(reader, depth+1)?, // nested
-                0x01 => {
-                    // TYPE_STRING
-                    let mut val_bytes = Vec::new();
-                    loop {
-                        let b = match safe_read_u8(reader) {
-                            Some(v) => v,
-                            None => break,
-                        };
-                        if b == 0 { break; }
-                        val_bytes.push(b);
-                    }
-                    Self::String(String::from_utf8(val_bytes).unwrap_or_default())
-                }
+                0x00 => Self::parse_internal(reader, depth + 1)?, // nested
+                0x01 => Self::String(read_null_terminated_string(reader).unwrap_or_default()), // TYPE_STRING
                 0x02 => Self::Int(safe_read_i32(reader).unwrap_or(0)), // TYPE_INT
                 0x03 => Self::Float(safe_read_f32(reader).unwrap_or(0.0)), // TYPE_FLOAT
                 0x04 => Self::Ptr(reader.read_u32::<LittleEndian>()?), // TYPE_PTR
-                0x05 => Self::WString(read_wstring(reader)?), // TYPE_WSTRING
+                0x05 => match read_wstring(reader)? { // TYPE_WSTRING
+                    Some(s) => Self::WString(s),
+                    None => continue, // skip negative-length WString
+                },
                 0x06 => { // TYPE_COLOR
                     let mut rgba = [0u8; 4];
                     if reader.read_exact(&mut rgba).is_ok() {
@@ -167,19 +202,8 @@ impl BinaryVdfValue {
                 }
                 0x07 => Self::UInt64(safe_read_u64(reader).unwrap_or(0)), // TYPE_UINT64
                 0x08 => {
-                    // TYPE_COMPILED_INT_BYTE
-                    let byte_val = match safe_read_u8(reader) {
-                        Some(b) => b as i8,
-                        None => 0,
-                    };
-                    Self::Int(byte_val as i32)
-                }
-                0x09 => Self::Int(0), // TYPE_COMPILED_INT_0
-                0x0A => Self::Int(1), // TYPE_COMPILED_INT_1
-                b if b >= 0x0B => {
-                    // Extended compiled integers (small int encoded as type byte)
-                    let int_val = if b <= 0x7F { b as i32 } else { (b as i8) as i32 };
-                    Self::Int(int_val)
+                    // https://github.com/ValveSoftware/source-sdk-2013/blob/68c8b82fdcb41b8ad5abde9fe1f0654254217b8e/src/tier1/KeyValues.cpp#L2715
+                    break;
                 }
                 _ => {
                     eprintln!("Warning: unsupported type {:02X} for key '{}'", type_byte, name);
