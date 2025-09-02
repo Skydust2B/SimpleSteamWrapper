@@ -2,10 +2,8 @@
 
 use std::collections::HashMap;
 use std::{io};
-use std::io::{BufRead, BufReader, Cursor, Error, Read};
-use std::string::FromUtf8Error;
+use std::io::{BufRead, Error, Read};
 use byteorder::{LittleEndian, ReadBytesExt};
-use log::info;
 
 pub struct MagicHeader {
     pub ident: u32,
@@ -19,7 +17,7 @@ pub fn read_magic<R: Read>(reader: &mut R, expected_ident: u32) -> io::Result<Ma
     let ident = raw >> 8;
 
     if ident != expected_ident {
-        return Err(io::Error::new(io::ErrorKind::InvalidData,
+        return Err(Error::new(io::ErrorKind::InvalidData,
                                   format!("Invalid ident: expected {:06X}, got {:06X}", expected_ident, ident)));
     }
 
@@ -37,39 +35,6 @@ pub enum BinaryVdfValue {
     Color([u8; 4]),
     UInt64(u64),
     Ptr(u32)
-}
-
-/// Safe reading helpers
-fn safe_read_u8<R: Read>(reader: &mut R) -> Option<u8> {
-    let mut buf = [0u8; 1];
-    match reader.read(&mut buf) {
-        Ok(1) => Some(buf[0]),
-        _ => None,
-    }
-}
-
-fn safe_read_i32<R: Read>(reader: &mut R) -> Option<i32> {
-    let mut buf = [0u8; 4];
-    match reader.read_exact(&mut buf) {
-        Ok(_) => Some(i32::from_le_bytes(buf)),
-        Err(_) => None,
-    }
-}
-
-fn safe_read_f32<R: Read>(reader: &mut R) -> Option<f32> {
-    let mut buf = [0u8; 4];
-    match reader.read_exact(&mut buf) {
-        Ok(_) => Some(f32::from_le_bytes(buf)),
-        Err(_) => None,
-    }
-}
-
-fn safe_read_u64<R: Read>(reader: &mut R) -> Option<u64> {
-    let mut buf = [0u8; 8];
-    match reader.read_exact(&mut buf) {
-        Ok(_) => Some(u64::from_le_bytes(buf)),
-        Err(_) => None,
-    }
 }
 
 /// Equivalent to the C++ PACKTYPE_WSTRING case
@@ -155,12 +120,32 @@ fn read_null_terminated_string<R: Read>(reader: &mut R) -> io::Result<String> {
     Ok(utf8)
 }
 
+fn read_string_from_table<R: Read>(reader: &mut R, string_table: &Vec<String>) -> io::Result<String> {
+    // Read 4 bytes for symbol/index (assuming 32-bit index in binary)
+    let index = reader.read_u32::<LittleEndian>()?;
+    // Look up string in table
+    if let Some(name) = string_table.get(index as usize) {
+        Ok(name.clone())
+    } else {
+        Ok(String::new()) // fallback if index invalid
+    }
+}
+
+pub struct BinaryVdfParserOptions {
+    pub string_table: Option<Vec<String>>
+}
+
 impl BinaryVdfValue {
+
     pub fn parse<R: Read>(reader: &mut R) -> io::Result<Self> {
-        Self::parse_internal(reader, 0)
+        Self::parse_internal(reader, &None, 0)
     }
 
-    fn parse_internal<R: Read>(reader: &mut R, depth: usize) -> io::Result<Self> {
+    pub fn parse_with_opts<R: Read>(reader: &mut R, options: BinaryVdfParserOptions) -> io::Result<Self> {
+        Self::parse_internal(reader, &Some(options), 0)
+    }
+
+    fn parse_internal<R: Read>(reader: &mut R, options: &Option<BinaryVdfParserOptions>, depth: usize) -> io::Result<Self> {
         if depth > 100 {
             return Err(Error::new(
                 io::ErrorKind::InvalidData,
@@ -168,25 +153,29 @@ impl BinaryVdfValue {
             ));
         }
 
+        let string_table = options.as_ref().and_then(|a| a.string_table.as_ref());
         let mut map = HashMap::new();
 
         loop {
-            let type_byte = match safe_read_u8(reader) {
-                Some(b) => b,
-                None => break, // EOF
-            };
+            let type_byte = reader.read_u8()?;
 
             if type_byte == 0x08 {
                 break; // TYPE_NUMTYPES
             }
 
-            let name = read_null_terminated_string(reader).unwrap_or_default();
+            let name = {
+                if string_table.is_some() {
+                    read_string_from_table(reader, &string_table.unwrap())?
+                } else {
+                    read_null_terminated_string(reader)?
+                }
+            };
 
             let value = match type_byte {
-                0x00 => Self::parse_internal(reader, depth + 1)?, // nested
+                0x00 => Self::parse_internal(reader, &options, depth + 1)?, // nested
                 0x01 => Self::String(read_null_terminated_string(reader).unwrap_or_default()), // TYPE_STRING
-                0x02 => Self::Int(safe_read_i32(reader).unwrap_or(0)), // TYPE_INT
-                0x03 => Self::Float(safe_read_f32(reader).unwrap_or(0.0)), // TYPE_FLOAT
+                0x02 => Self::Int(reader.read_i32::<LittleEndian>().unwrap_or(0)), // TYPE_INT
+                0x03 => Self::Float(reader.read_f32::<LittleEndian>().unwrap_or(0.0)), // TYPE_FLOAT
                 0x04 => Self::Ptr(reader.read_u32::<LittleEndian>()?), // TYPE_PTR
                 0x05 => match read_wstring(reader)? { // TYPE_WSTRING
                     Some(s) => Self::WString(s),
@@ -200,7 +189,7 @@ impl BinaryVdfValue {
                         Self::Color([0, 0, 0, 0])
                     }
                 }
-                0x07 => Self::UInt64(safe_read_u64(reader).unwrap_or(0)), // TYPE_UINT64
+                0x07 => Self::UInt64(reader.read_u64::<LittleEndian>().unwrap_or(0)), // TYPE_UINT64
                 0x08 => {
                     // https://github.com/ValveSoftware/source-sdk-2013/blob/68c8b82fdcb41b8ad5abde9fe1f0654254217b8e/src/tier1/KeyValues.cpp#L2715
                     break;
@@ -214,5 +203,30 @@ impl BinaryVdfValue {
             map.insert(name, value);
         }
         Ok(Self::None(map))
+    }
+}
+
+/// Pretty-print a BinaryVdfValue with indentation
+pub fn print_binary_vdf(map: &HashMap<String, BinaryVdfValue>, indent: usize) {
+    let indent_str = "  ".repeat(indent);
+
+    for (key, value) in map {
+        match value {
+            BinaryVdfValue::None(sub_map) => {
+                println!("{}{}: {{", indent_str, key);
+                print_binary_vdf(sub_map, indent + 1);
+                println!("{}}}", indent_str);
+            }
+            BinaryVdfValue::String(s) => println!("{}{}: \"{}\"", indent_str, key, s),
+            BinaryVdfValue::Int(i) => println!("{}{}: {}", indent_str, key, i),
+            BinaryVdfValue::Float(f) => println!("{}{}: {}", indent_str, key, f),
+            BinaryVdfValue::Color(rgba) => println!(
+                "{}{}: rgba({}, {}, {}, {})",
+                indent_str, key, rgba[0], rgba[1], rgba[2], rgba[3]
+            ),
+            BinaryVdfValue::UInt64(u) => println!("{}{}: {}", indent_str, key, u),
+            BinaryVdfValue::WString(s) => println!("{}{}: \"{}\"", indent_str, key, s),
+            BinaryVdfValue::Ptr(p) => println!("{}{}: \"{}\"", indent_str, key, p),
+        }
     }
 }
