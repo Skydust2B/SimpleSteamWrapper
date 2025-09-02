@@ -138,14 +138,14 @@ pub struct BinaryVdfParserOptions {
 impl BinaryVdfValue {
 
     pub fn parse<R: Read>(reader: &mut R) -> io::Result<Self> {
-        Self::parse_internal(reader, &None, 0)
+        Self::parse_internal(reader, None, 0)
     }
 
-    pub fn parse_with_opts<R: Read>(reader: &mut R, options: BinaryVdfParserOptions) -> io::Result<Self> {
-        Self::parse_internal(reader, &Some(options), 0)
+    pub fn parse_with_opts<R: Read>(reader: &mut R, options: &BinaryVdfParserOptions) -> io::Result<Self> {
+        Self::parse_internal(reader, Some(options), 0)
     }
 
-    fn parse_internal<R: Read>(reader: &mut R, options: &Option<BinaryVdfParserOptions>, depth: usize) -> io::Result<Self> {
+    fn parse_internal<R: Read>(reader: &mut R, options: Option<&BinaryVdfParserOptions>, depth: usize) -> io::Result<Self> {
         if depth > 100 {
             return Err(Error::new(
                 io::ErrorKind::InvalidData,
@@ -172,7 +172,7 @@ impl BinaryVdfValue {
             };
 
             let value = match type_byte {
-                0x00 => Self::parse_internal(reader, &options, depth + 1)?, // nested
+                0x00 => Self::parse_internal(reader, options, depth + 1)?, // nested
                 0x01 => Self::String(read_null_terminated_string(reader).unwrap_or_default()), // TYPE_STRING
                 0x02 => Self::Int(reader.read_i32::<LittleEndian>().unwrap_or(0)), // TYPE_INT
                 0x03 => Self::Float(reader.read_f32::<LittleEndian>().unwrap_or(0.0)), // TYPE_FLOAT

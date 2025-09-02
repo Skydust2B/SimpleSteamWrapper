@@ -74,6 +74,9 @@ pub fn parse_appinfo<R: Read + Seek>(reader: &mut R) -> io::Result<AppInfoFile> 
         let string_table_offset = reader.read_u64::<LittleEndian>()?;
         file.string_table = Some(parse_string_table(reader, string_table_offset)?);
     }
+    let parser_opts = &BinaryVdfParserOptions {
+        string_table: file.string_table.clone()
+    };
 
     loop {
         let app_id = match reader.read_u32::<LittleEndian>() {
@@ -101,9 +104,7 @@ pub fn parse_appinfo<R: Read + Seek>(reader: &mut R) -> io::Result<AppInfoFile> 
         let mut vdf_buf = Vec::new();
         cursor.read_to_end(&mut vdf_buf)?;
 
-        let vdf = BinaryVdfValue::parse_with_opts(&mut Cursor::new(vdf_buf), BinaryVdfParserOptions {
-            string_table: file.string_table.clone()
-        }).unwrap_or_else(|_| BinaryVdfValue::default());
+        let vdf = BinaryVdfValue::parse_with_opts(&mut Cursor::new(vdf_buf), parser_opts).unwrap_or_else(|_| BinaryVdfValue::default());
 
         file.apps.push(AppInfoSection {
             app_id,
