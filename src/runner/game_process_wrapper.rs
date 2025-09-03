@@ -6,7 +6,7 @@ use crate::command_helpers::to_quoted_string;
 use crate::config::config::{Config};
 use crate::config::config_loader::LOADED_CONFIG;
 use crate::compatibility_tools::compat_tools_wrapper::{get_compat_tool_from_config};
-use crate::compatibility_tools::steam::{get_steam_path, get_steam_sniper_runtime};
+use crate::compatibility_tools::steam::{get_steam_sniper_runtime};
 use crate::tweak::{list_tweaks, Tweak};
 
 pub fn get_run_verb() -> Option<String> {

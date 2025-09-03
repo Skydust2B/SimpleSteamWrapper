@@ -38,6 +38,7 @@ fn get_installed_steam_apps_inner() -> HashMap<String, InstalledSteamGame> {
                 name: manifest_root.get("name").unwrap().as_str().unwrap().to_string(),
                 path: library_path
                     .join("steamapps")
+                    .join("common")
                     .join(manifest_root.get("installdir").unwrap().as_str().unwrap())
             });
         }
