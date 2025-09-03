@@ -1,12 +1,8 @@
-use std::error::Error;
-use std::process::Command;
+use log::{warn};
+use which::which;
 
 pub fn to_quoted_string(args: Vec<String>) -> String {
     format!("\"{}\"", args.join("\" \""))
-}
-
-pub fn has_command(cmd: String) -> Result<bool, Box<dyn Error>> {
-    Ok(Command::new("command").args(&["-v", cmd.as_str()]).status()?.success())
 }
 
 pub fn find_terminal_emulator() -> Option<String> {
@@ -17,11 +13,11 @@ pub fn find_terminal_emulator() -> Option<String> {
     ];
 
     for term in terminals {
-        if has_command(term.to_string()).is_ok() {
+        if which(term.to_string()).is_ok() {
             return Some(term.to_string())
         }
     }
 
-    eprintln!("No terminal emulator found.");
+    warn!("No terminal emulator found.");
     None
 }

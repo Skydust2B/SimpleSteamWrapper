@@ -13,6 +13,8 @@ export component MainGUI inherits Window {
     in property <[string]> gpus;
 
     in-out property <bool> editing_defaults;
+
+    in property <string> app_version;
     callback reset_to_defaults();
     
     callback update_wrapper();
@@ -203,6 +205,8 @@ export component MainGUI inherits Window {
         VerticalBox {
             if (!game_app_id.is-empty): HorizontalBox {
                 Text {
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
                     font-weight: 600;
                     text: "AppId: " + game_app_id;
                 }
@@ -229,6 +233,11 @@ export component MainGUI inherits Window {
                 Button {
                     text: "Update Wrapper";
                     clicked => { update_wrapper(); }
+                }
+                Text {
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                    text: "Version: "+ app_version;
                 }
             }
         }

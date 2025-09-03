@@ -2,6 +2,7 @@ import { ComboBox, CheckBox, VerticalBox, HorizontalBox, SpinBox, Button, Scroll
 
 export component PrefixSettingsGUI inherits Window {
     width: 500px;
+    height: 500px;
     title: "Simple Steam Wrapper - Prefix";
 
     in property <string> game_app_id: "0";
@@ -19,10 +20,11 @@ export component PrefixSettingsGUI inherits Window {
             text: "AppId: " + game_app_id;
         }
         Text {
+            wrap: char-wrap;
             text: "Prefix: " + prefix_path;
         }
         Text {
-            text: "Current runner: " + prefix_path;
+            text: "Current runner: " + runner_name;
         }
         ScrollView {
             viewport-width: self.width;

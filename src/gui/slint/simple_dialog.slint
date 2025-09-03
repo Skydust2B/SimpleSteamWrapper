@@ -1,0 +1,16 @@
+import { Button, StandardButton } from "std-widgets.slint";
+
+export component SimpleDialog inherits Dialog {
+    in property <string> text;
+    title: "Simple Steam Wrapper";
+
+    Text {
+        horizontal-alignment: center;
+        text <=> text;
+    }
+
+    StandardButton{
+        accessible-role: AccessibleRole.button;
+        kind: ok;
+    }
+}

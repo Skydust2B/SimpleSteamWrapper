@@ -9,6 +9,7 @@ use crate::{AppConf, MainGUI};
 use crate::compatibility_tools::compat_tools_wrapper::{get_compat_tool_from_config};
 use crate::compatibility_tools::steam::list_steam_compat_tools;
 use crate::gpu_tools::gpu::{get_gpu_from_config, list_all_gpus};
+use crate::gui::dialog::show_message_dialog;
 use crate::install::install::install_or_update;
 
 fn find_index<T, F>(items: &[T], predicate: F) -> Option<i32>
@@ -100,7 +101,12 @@ fn save_custom_values_into_conf(window: &MainGUI, shared_config: Rc<RefCell<Valu
 }
 
 pub fn show_gui() {
+    let _ = slint::set_xdg_app_id("fr.Skydust.SimpleSteamWrapper");
+
     let window = MainGUI::new().unwrap();
+
+    let version = env!("CARGO_PKG_VERSION");
+    window.set_app_version(SharedString::from(version));
 
     let steam_app_id = get_steam_app_id().unwrap_or("".to_string());
     window.set_game_app_id(SharedString::from(&steam_app_id));
@@ -184,6 +190,7 @@ pub fn show_gui() {
 
     window.on_update_wrapper(|| {
         install_or_update();
+        show_message_dialog("Successfully updated wrapper");
     });
 
     window.on_reset_to_defaults({
@@ -211,7 +218,7 @@ pub fn show_gui() {
         move || {
             let updated_conf: Config = serde_yaml::from_value((*shared_serialized_conf.borrow()).clone()).unwrap();
             LOADED_CONFIG.set_config(updated_conf);
-            crate::prefix_gui::show_gui();
+            crate::gui::prefix_gui::show_gui();
         }
     });
 

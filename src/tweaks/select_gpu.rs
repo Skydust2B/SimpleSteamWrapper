@@ -45,7 +45,7 @@ pub fn get_nvidia_gpu_env_vars(gpu: &GPU) -> Vec<(String,String)> {
         info!("Found NVIDIA GPU UUID: {}", uuid);
         env_vars.push((
             "CUDA_VISIBLE_DEVICES".to_string(),
-            format!("GPU-{}", uuid)
+            uuid
         ));
     }
 

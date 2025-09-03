@@ -1,6 +1,7 @@
-use std::{env, fs};
+use std::{env, io};
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use std::process::{ExitStatus, Stdio};
+use tokio::process::{Command};
 use log::{info, warn};
 use crate::command_helpers::{find_terminal_emulator, to_quoted_string};
 use crate::compatibility_tools::steam::list_steam_compat_tools;
@@ -34,7 +35,7 @@ pub fn get_wine_variables() -> Vec<(String, String)> {
     let mut env_vars = Vec::<(String, String)>::new();
     let data_path = env::var("STEAM_COMPAT_DATA_PATH").expect("STEAM_COMPAT_DATA_PATH must be set");
 
-    env_vars.push(("WINE_PREFIX".to_string(), PathBuf::from(data_path).join("pfx").to_str().unwrap().to_string()));
+    env_vars.push(("WINEPREFIX".to_string(), PathBuf::from(data_path).join("pfx").to_str().unwrap().to_string()));
 
     let compat_tool = get_compat_tool_from_config();
     let wine_binary_path = PathBuf::from(compat_tool.dir_path).join("files/bin/wine");
@@ -48,43 +49,42 @@ pub fn get_wine_variables() -> Vec<(String, String)> {
     env_vars
 }
 
-pub fn run_wiretricks_in_prefix() {
+pub async fn run_wiretricks_in_prefix() -> io::Result<ExitStatus> {
     let data_path = PathBuf::from(env::var("STEAM_COMPAT_DATA_PATH").expect("STEAM_COMPAT_DATA_PATH must be set"));
     let compat_tool = get_compat_tool_from_config();
 
     info!("Running winetricks with {} at {}", compat_tool.name, data_path.display());
-    let wine_vars = get_wine_variables();
     let mut process = Command::new("winetricks");
     process
-        .envs(wine_vars)
+        .arg("--gui")
+        .envs(get_wine_variables())
+        .env("LD_PRELOAD", "")
+        .env("LD_LIBRARY_PATH", "")
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
-        .stdin(Stdio::inherit())
-        .status()
-        .unwrap();
+        .status().await
 }
 
-pub fn reset_prefix() {
+pub async fn reset_prefix() -> io::Result<ExitStatus> {
     let data_path = PathBuf::from(env::var("STEAM_COMPAT_DATA_PATH").expect("STEAM_COMPAT_DATA_PATH must be set"));
     if data_path.exists() {
         info!("Removing prefix at {}", data_path.display());
-        fs::remove_dir_all(&data_path).expect("Unable to remove prefix");
+        tokio::fs::remove_dir_all(&data_path).await.expect("Unable to remove prefix");
     }
     let compat_tool = get_compat_tool_from_config();
 
     info!("Recreating prefix with {} at {}", compat_tool.name, data_path.display());
     let mut process = Command::new(compat_tool.path);
+
     process
-        .args(&["run", "--", "/bin/true"])
+        .args(&["run", "/bin/true"])
         .env("STEAM_COMPAT_DATA_PATH", data_path.to_str().unwrap())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
-        .stdin(Stdio::inherit())
-        .status()
-        .unwrap();
+        .status().await
 }
 
-pub fn run_in_prefix(executable: PathBuf, in_terminal: bool) {
+pub async fn run_in_prefix(executable: PathBuf, in_terminal: bool) -> io::Result<ExitStatus> {
     let compat_tool = get_compat_tool_from_config();
     let wine_binary_path = PathBuf::from(compat_tool.dir_path).join("files/bin/wine");
 
@@ -106,6 +106,9 @@ pub fn run_in_prefix(executable: PathBuf, in_terminal: bool) {
     };
 
     process.envs(get_wine_variables())
+        .env("LD_PRELOAD", "")
+        .env("LD_LIBRARY_PATH", "")
+        .env("WINEDEBUG", "")
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .stdin(Stdio::inherit());
@@ -121,8 +124,5 @@ pub fn run_in_prefix(executable: PathBuf, in_terminal: bool) {
     process
         .arg(joined_cmd);
 
-    let status = process
-        .status().unwrap();
-
-    info!("Command exited with status code: {}", status);
+    process.status().await
 }

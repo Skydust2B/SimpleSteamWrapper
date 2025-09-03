@@ -17,7 +17,6 @@ static INSTALLED_STEAM_APPS: Lazy<Mutex<HashMap<String, InstalledSteamGame>>> = 
     Mutex::new(apps)
 });
 
-// Your original logic moved to a private function
 fn get_installed_steam_apps_inner() -> HashMap<String, InstalledSteamGame> {
     let library_vdf_path = get_steam_path().unwrap().join("steamapps/libraryfolders.vdf");
     let library_vdf = read_vdf(library_vdf_path);

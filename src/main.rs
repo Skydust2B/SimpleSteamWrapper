@@ -1,6 +1,5 @@
 extern crate core;
 
-mod gui;
 mod tweaks;
 mod config;
 mod runner;
@@ -9,21 +8,22 @@ pub(crate) mod tweak;
 mod compatibility_tools;
 mod vdf_tools;
 mod gpu_tools;
-mod prefix_gui;
 mod command_helpers;
+mod gui;
 
 use std::env;
 use tracing_subscriber::EnvFilter;
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use log::info;
 use crate::config::config_loader::load_config;
+use crate::gui::main_gui::show_gui;
 use crate::runner::game_process_wrapper::run_game_process;
-use crate::gui::show_gui;
 use crate::install::install::check_install;
 
 slint::include_modules!();
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let rust_log = env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::new(format!("{},tracing=warn", rust_log)))
