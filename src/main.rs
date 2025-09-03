@@ -10,6 +10,7 @@ mod compatibility_tools;
 mod vdf_tools;
 mod gpu_tools;
 mod prefix_gui;
+mod command_helpers;
 
 use std::env;
 use std::fs::File;
@@ -21,6 +22,7 @@ use crate::config::config_loader::load_config;
 use crate::runner::game_process_wrapper::run_game_process;
 use crate::gui::show_gui;
 use crate::install::install::check_install;
+use crate::vdf_tools::steam_appinfo_vdf_parser::parse_appinfo;
 
 slint::include_modules!();
 
@@ -35,11 +37,11 @@ fn main() {
 
     /*let mut pkg_file = File::open(get_steam_path().unwrap().join("appcache/packageinfo.vdf")).unwrap();
     let parsed = parse_packageinfo(&mut pkg_file).unwrap();
-    info!("parsed packageinfo: {:?}", parsed.packages.len());
+    info!("parsed packageinfo: {:?}", parsed.packages.len());*/
 
     let mut pkg_file = File::open(get_steam_path().unwrap().join("appcache/appinfo.vdf")).unwrap();
     let parsed = parse_appinfo(&mut pkg_file).unwrap();
-    info!("parsed app_info {}", parsed.apps.len());*/
+    info!("parsed app_info {}", parsed.apps.len());
 
     let is_in_steam_env = env::var("STEAM_COMPAT_APP_ID").and(Ok(true)).unwrap_or(false);
 

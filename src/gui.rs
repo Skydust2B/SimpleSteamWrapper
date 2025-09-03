@@ -1,9 +1,6 @@
 use std::cell::RefCell;
-use std::path::PathBuf;
-use std::process::{Command, Stdio};
 use std::rc::Rc;
-use log::{debug, info};
-use rfd::FileDialog;
+use log::{debug};
 use serde_yaml::Value;
 use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
 use crate::config::config::Config;
@@ -114,31 +111,6 @@ pub fn show_gui() {
     let serialized_conf: Rc<RefCell<Value>> =
         Rc::new(RefCell::new(serde_yaml::to_value(&LOADED_CONFIG.get_config()).unwrap()));
 
-    window.on_get_combobox_gpu_id(|v| {
-        let gpus = list_all_gpus();
-        SharedString::from(gpus.get(v as usize).unwrap().as_formatted_id())
-    });
-
-    load_values_from_conf(&window, serialized_conf.clone());
-    window.on_add_env_var({
-        let weak_window = window.as_weak();
-        move || {
-            let env_window = weak_window.upgrade().unwrap();
-            let env_vars = env_window.get_env_vars().iter().collect::<VecModel<(SharedString, SharedString)>>();
-            env_vars.push((SharedString::new(), SharedString::new()));
-            env_window.set_env_vars(ModelRc::from(Rc::new(env_vars)));
-        }
-    });
-    window.on_remove_env_var({
-        let weak_window = window.as_weak();
-        move |val| {
-            let env_window = weak_window.upgrade().unwrap();
-            let env_vars = env_window.get_env_vars().iter().collect::<VecModel<(SharedString, SharedString)>>();
-            env_vars.remove(val as usize);
-            env_window.set_env_vars(ModelRc::from(Rc::new(env_vars)));
-        }
-    });
-
     // Getter
     window.global::<AppConf>().on_get_opt({
         let shared_serialized_conf = Rc::clone(&serialized_conf);
@@ -159,6 +131,32 @@ pub fn show_gui() {
             let mut set_conf = shared_serialized_conf.borrow_mut();
             debug!("set_opt: {:?} -> {:?} (default: {})", &key, &val, is_editing_defaults);
             set_serialized_config_value(&mut set_conf, &key, &val, is_editing_defaults);
+        }
+    });
+
+    window.on_get_combobox_gpu_id(|v| {
+        let gpus = list_all_gpus();
+        SharedString::from(gpus.get(v as usize).unwrap().as_formatted_id())
+    });
+
+    load_values_from_conf(&window, serialized_conf.clone());
+    window.on_add_env_var({
+        let weak_window = window.as_weak();
+        move || {
+            let env_window = weak_window.upgrade().unwrap();
+            let env_vars = env_window.get_env_vars().iter().collect::<VecModel<(SharedString, SharedString)>>();
+            env_vars.push((SharedString::new(), SharedString::new()));
+            env_window.set_env_vars(ModelRc::from(Rc::new(env_vars)));
+        }
+    });
+
+    window.on_remove_env_var({
+        let weak_window = window.as_weak();
+        move |val| {
+            let env_window = weak_window.upgrade().unwrap();
+            let env_vars = env_window.get_env_vars().iter().collect::<VecModel<(SharedString, SharedString)>>();
+            env_vars.remove(val as usize);
+            env_window.set_env_vars(ModelRc::from(Rc::new(env_vars)));
         }
     });
 
@@ -208,26 +206,12 @@ pub fn show_gui() {
         }
     });
 
-    window.on_run_in_prefix(|| {
-        if let Some(path) = FileDialog::new()
-            .add_filter("Windows Executables", &["exe","msi","msix"])
-            .add_filter("Windows Scripts", &["bat", "cmd"])
-            .pick_file() {
-            let compat_tool = get_compat_tool_from_config();
-            let wine_binary_path = PathBuf::from(compat_tool.dir_path).join("files/bin/wine");
-
-            let mut process = Command::new(wine_binary_path);
-            process.envs(get_wine_variables())
-                .arg(path)
-                .stdout(Stdio::inherit())
-                .stderr(Stdio::inherit())
-                .stdin(Stdio::inherit());
-
-            let status = process
-                .status()
-                .expect("Failed to spawn child");
-
-            info!("Exit status: {}", status);
+    window.on_show_prefix_options({
+        let shared_serialized_conf = Rc::clone(&serialized_conf);
+        move || {
+            let updated_conf: Config = serde_yaml::from_value((*shared_serialized_conf.borrow()).clone()).unwrap();
+            LOADED_CONFIG.set_config(updated_conf);
+            crate::prefix_gui::show_gui();
         }
     });
 

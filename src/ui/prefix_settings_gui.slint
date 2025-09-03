@@ -8,12 +8,11 @@ export component PrefixSettingsGUI inherits Window {
 
     in property <string> prefix_path: "///";
 
-    in property <bool> reload: false;
+    in property <string> runner_name: "";
+
     callback recreate_prefix();
     callback run_winetricks();
-    callback run_in_prefix();
-
-    in-out property <[{ key: string, value: string }]> env_vars: [];
+    callback run_in_prefix(bool);
 
     VerticalBox {
         Text {
@@ -40,9 +39,9 @@ export component PrefixSettingsGUI inherits Window {
                     Button {
                         horizontal-stretch: 1;
                         text: "Run in game prefix";
-                        clicked => { run_in_prefix() }
+                        clicked => { run_in_prefix(in_terminal.checked) }
                     }
-                    CheckBox {
+                    in_terminal := CheckBox {
                         text: "In terminal";
                     }
                 }

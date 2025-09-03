@@ -63,7 +63,7 @@ pub fn parse_steam_compat_tool(path: PathBuf) -> CompatTool {
     CompatTool {
         name: compat_tool_display_name.to_string(),
         dir_path: compat_tool_dir_path.to_str().unwrap().to_string(),
-        path: command_path.to_str().unwrap().to_string()
+        path: command_path.to_str().unwrap().to_string().replace(" %verb%", "")
     }
 }
 

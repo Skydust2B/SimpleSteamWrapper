@@ -2,14 +2,23 @@ use std::{env};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use log::info;
+use crate::command_helpers::to_quoted_string;
 use crate::config::config::{Config};
 use crate::config::config_loader::LOADED_CONFIG;
 use crate::compatibility_tools::compat_tools_wrapper::{get_compat_tool_from_config};
 use crate::compatibility_tools::steam::get_steam_path;
 use crate::tweak::{list_tweaks, Tweak};
 
-fn to_quoted_string(args: Vec<String>) -> String {
-    format!("\"{}\"", args.join("\" \""))
+pub fn get_run_verb() -> Option<String> {
+    match env::args().nth(1) {
+        Some(arg) => {
+            if ["run", "waitforexitandrun"].contains(&arg.as_str()) {
+                return Some(arg.to_string());
+            }
+            None
+        },
+        None => None
+    }
 }
 
 pub fn run_game_process() {
@@ -47,13 +56,12 @@ pub fn run_game_process() {
         env::var("STEAM_COMPAT_DATA_PATH").expect("STEAM_COMPAT_DATA_PATH must be set");
 
         let compat_tool = get_compat_tool_from_config();
+        let mut wrapper_prepared_command = String::new();
+
+        let run_verb = get_run_verb().unwrap_or("run".to_string());
         let passed_arguments = env::args().skip(2).collect::<Vec<String>>();
 
-        let mut wrapper_prepared_command = String::new();
-        let mut run_verb = "run";
-        if env::args().nth(1).unwrap() == "waitforexitandrun" {
-            run_verb = "waitforexitandrun";
-
+        if run_verb == "waitforexitandrun" {
             if prepared_command.len() > 0 {
                 wrapper_prepared_command = format!("{} ", to_quoted_string(prepared_command));
             }
@@ -63,7 +71,7 @@ pub fn run_game_process() {
             wrapper_prepared_command,
             steam_runtime_run_path.to_str().unwrap(),
             run_verb,
-            compat_tool.path.to_string().replace(" %verb%", ""),
+            compat_tool.path.to_string(),
             run_verb,
             to_quoted_string(passed_arguments));
 

@@ -1,0 +1,28 @@
+export global AppConf  {
+    pure callback get_opt(string) -> string;
+    callback set_opt(string, string);
+
+    public pure function get_opt_bool(path: string) -> bool {
+        return get_opt(path) == "true";
+    }
+
+    public function set_opt_bool(path: string, parameter: bool) {
+        set_opt(path, parameter ? "true" : "false");
+    }
+
+    public pure function get_opt_int(path: string) -> int {
+        return get_opt(path).to-float();
+    }
+
+    public function set_opt_int(path: string, parameter: int) {
+        set_opt(path, parameter.to-fixed(0));
+    }
+
+    public pure function get_opt_float(path: string) -> float {
+        return get_opt(path).to-float();
+    }
+
+    public function set_opt_float(path: string, parameter: float) {
+        set_opt(path, parameter.to-fixed(2));
+    }
+}
