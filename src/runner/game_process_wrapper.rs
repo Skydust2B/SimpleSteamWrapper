@@ -6,7 +6,7 @@ use crate::command_helpers::to_quoted_string;
 use crate::config::config::{Config};
 use crate::config::config_loader::LOADED_CONFIG;
 use crate::compatibility_tools::compat_tools_wrapper::{get_compat_tool_from_config};
-use crate::compatibility_tools::steam::get_steam_path;
+use crate::compatibility_tools::steam::{get_steam_path, get_steam_sniper_runtime};
 use crate::tweak::{list_tweaks, Tweak};
 
 pub fn get_run_verb() -> Option<String> {
@@ -48,11 +48,11 @@ pub fn run_game_process() {
             }
         });
 
-        let steam_runtime_path = get_steam_path().unwrap().join("steamapps/common/SteamLinuxRuntime_sniper");
-        if !steam_runtime_path.exists() {
-            panic!("Could not find steam runtime");
-        }
-        let steam_runtime_run_path = PathBuf::from(steam_runtime_path).join("_v2-entry-point");
+        let steam_runtime = match get_steam_sniper_runtime() {
+            Some(installed_steam_runtime) => installed_steam_runtime,
+            None => panic!("No steam runtime found")
+        };
+        let steam_runtime_run_path = PathBuf::from(steam_runtime.path).join("_v2-entry-point");
         env::var("STEAM_COMPAT_DATA_PATH").expect("STEAM_COMPAT_DATA_PATH must be set");
 
         let compat_tool = get_compat_tool_from_config();

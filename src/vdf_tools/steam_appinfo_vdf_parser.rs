@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io::{self, Cursor, Read, Seek, SeekFrom};
 use byteorder::{LittleEndian, ReadBytesExt};
 use crate::vdf_tools::binary_vdf_parser::{read_magic, BinaryVdfParserOptions, BinaryVdfValue};
@@ -19,7 +20,7 @@ pub struct AppInfoSection {
 pub struct AppInfoFile {
     pub version: u32,
     pub string_table: Option<Vec<String>>,
-    pub apps: Vec<AppInfoSection>,
+    pub apps: HashMap<u32, AppInfoSection>
 }
 
 /// Parse the string table at the given offset in the file.
@@ -65,7 +66,7 @@ pub fn parse_appinfo<R: Read + Seek>(reader: &mut R) -> io::Result<AppInfoFile> 
     let mut file = AppInfoFile {
         version: magic.version as u32,
         string_table: None,
-        apps: Vec::new(),
+        apps: HashMap::new(),
     };
 
     let _universe = reader.read_u32::<LittleEndian>()?;
@@ -106,7 +107,7 @@ pub fn parse_appinfo<R: Read + Seek>(reader: &mut R) -> io::Result<AppInfoFile> 
 
         let vdf = BinaryVdfValue::parse_with_opts(&mut Cursor::new(vdf_buf), parser_opts).unwrap_or_else(|_| BinaryVdfValue::default());
 
-        file.apps.push(AppInfoSection {
+        file.apps.insert(app_id, AppInfoSection {
             app_id,
             info_state,
             last_updated,

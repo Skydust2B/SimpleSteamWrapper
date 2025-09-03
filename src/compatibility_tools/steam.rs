@@ -1,8 +1,27 @@
 use std::fs;
 use std::path::PathBuf;
-use vdf_reader::entry::{Entry, Table};
+use std::string::ToString;
+use vdf_reader::entry::{Entry};
 use crate::compatibility_tools::compat_tools_wrapper::{CompatTool};
+use crate::compatibility_tools::installed_steam_apps::{get_installed_steam_apps, InstalledSteamGame};
 use crate::vdf_tools::vdf_simple_parser::read_vdf;
+
+const STEAM_VALID_COMPAT_APPIDS: [&str; 14] = [
+    "2230260",
+    "2180100",
+    "1493710",
+    "3658110",
+    "2805730",
+    "2348590",
+    "1887720",
+    "1580130",
+    "1420170",
+    "1245040",
+    "1113280",
+    "1054830",
+    "961940",
+    "858280",
+];
 
 pub fn get_steam_path() -> Option<PathBuf> {
     let home = std::env::var_os("HOME")?;
@@ -15,22 +34,35 @@ pub fn get_steam_path() -> Option<PathBuf> {
     candidates.into_iter().find(|p| p.exists())
 }
 
-pub fn get_steam_config() -> Table {
-    let steam_path = get_steam_path().unwrap();
-    let steam_config_path = steam_path.join("config/config.vdf");
-    read_vdf(steam_config_path)
-}
-
-pub fn get_steam_default_compat_tool() -> String {
-    let cfg = get_steam_config();
-
-    cfg["InstallConfigStore"].lookup("Software.Valve.Steam.CompatToolMapping.0.name")
-        .and_then(|v| v.as_str())
-        .unwrap_or_else(|| "").to_string()
+pub fn get_steam_sniper_runtime() -> Option<InstalledSteamGame> {
+    let steam_apps = get_installed_steam_apps();
+    if let Some(app) = steam_apps.get("1628350") {
+        return Some(app.clone());
+    }
+    None
 }
 
 pub fn get_steam_compat_tools_path() -> PathBuf {
     PathBuf::from(get_steam_path().unwrap()).join("compatibilitytools.d")
+}
+
+pub fn parse_steam_compat_tool_from_app(app: InstalledSteamGame) -> CompatTool {
+    let tool_manifest = read_vdf(app.path.join("toolmanifest.vdf"));
+
+    let command_path = app.path.join(
+        tool_manifest["manifest"]
+            .get("commandline")
+            .and_then(|v| v.as_str())
+            .unwrap_or_else(|| "")
+            .to_string()
+            .strip_prefix("/").unwrap_or_else(|| "")
+    );
+
+    CompatTool {
+        name: app.name.to_string(),
+        dir_path: app.path.to_str().unwrap().to_string(),
+        path: command_path.to_str().unwrap().to_string().replace(" %verb%", "")
+    }
 }
 
 pub fn parse_steam_compat_tool(path: PathBuf) -> CompatTool {
@@ -79,5 +111,13 @@ pub fn list_steam_compat_tools() -> Vec<CompatTool> {
             }
         }
     }
+
+    let steam_apps = get_installed_steam_apps();
+    STEAM_VALID_COMPAT_APPIDS.iter().for_each(|app_id| {
+        if let Some(app) = steam_apps.get(&app_id.to_string()) {
+            results.push(parse_steam_compat_tool_from_app(app.clone()));
+        }
+    });
+
     results
 }
