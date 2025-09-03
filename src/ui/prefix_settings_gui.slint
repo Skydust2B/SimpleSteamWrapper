@@ -1,0 +1,52 @@
+import { ComboBox, CheckBox, VerticalBox, HorizontalBox, SpinBox, Button, ScrollView, ListView, LineEdit } from "std-widgets.slint";
+
+export component PrefixSettingsGUI inherits Window {
+    width: 500px;
+    title: "Simple Steam Wrapper - Prefix";
+
+    in property <string> game_app_id: "0";
+
+    in property <string> prefix_path: "///";
+
+    in property <bool> reload: false;
+    callback recreate_prefix();
+    callback run_winetricks();
+    callback run_in_prefix();
+
+    in-out property <[{ key: string, value: string }]> env_vars: [];
+
+    VerticalBox {
+        Text {
+            text: "AppId: " + game_app_id;
+        }
+        Text {
+            text: "Prefix: " + prefix_path;
+        }
+        Text {
+            text: "Current runner: " + prefix_path;
+        }
+        ScrollView {
+            viewport-width: self.width;
+            VerticalBox {
+                Button {
+                    text: "Recreate Prefix";
+                    clicked => { recreate_prefix() }
+                }
+                Button {
+                    text: "Winetricks";
+                    clicked => { run_winetricks() }
+                }
+                HorizontalBox {
+                    Button {
+                        horizontal-stretch: 1;
+                        text: "Run in game prefix";
+                        clicked => { run_in_prefix() }
+                    }
+                    CheckBox {
+                        text: "In terminal";
+                    }
+                }
+            }
+        }
+    }
+}

@@ -9,6 +9,7 @@ pub(crate) mod tweak;
 mod compatibility_tools;
 mod vdf_tools;
 mod gpu_tools;
+mod prefix_gui;
 
 use std::env;
 use std::fs::File;

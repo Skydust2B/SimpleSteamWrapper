@@ -1,6 +1,8 @@
-use std::{env};
+use std::{env, fs};
+use std::error::Error;
 use std::path::PathBuf;
-use log::{warn};
+use std::process::{Command, Stdio};
+use log::{info, warn};
 use crate::compatibility_tools::steam::list_steam_compat_tools;
 use crate::config::config_loader::LOADED_CONFIG;
 
@@ -34,10 +36,118 @@ pub fn get_wine_variables() -> Vec<(String, String)> {
 
     env_vars.push(("WINE_PREFIX".to_string(), PathBuf::from(data_path).join("pfx").to_str().unwrap().to_string()));
 
+    let compat_tool = get_compat_tool_from_config();
+    let wine_binary_path = PathBuf::from(compat_tool.dir_path).join("files/bin/wine");
+    env_vars.push(("WINE".to_string(), wine_binary_path.to_str().unwrap().to_string()));
+
     let game_data_path = env::var("STEAM_COMPAT_INSTALL_PATH").expect("STEAM_COMPAT_INSTALL_PATH must be set");
     env_vars.push(("PWD".to_string(), game_data_path));
 
     env_vars.push(("WINEDEBUG".to_string(),"-all".to_string()));
 
     env_vars
+}
+
+pub fn run_wiretricks_in_prefix() {
+    let data_path = PathBuf::from(env::var("STEAM_COMPAT_DATA_PATH").expect("STEAM_COMPAT_DATA_PATH must be set"));
+    let compat_tool = get_compat_tool_from_config();
+
+    info!("Running winetricks with {} at {}", compat_tool.name, data_path.display());
+    let wine_vars = get_wine_variables();
+    let mut process = Command::new("winetricks");
+    process
+        .envs(wine_vars)
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .stdin(Stdio::inherit())
+        .status()
+        .unwrap();
+}
+
+pub fn reset_prefix() {
+    let data_path = PathBuf::from(env::var("STEAM_COMPAT_DATA_PATH").expect("STEAM_COMPAT_DATA_PATH must be set"));
+    if data_path.exists() {
+        info!("Removing prefix at {}", data_path.display());
+        fs::remove_dir_all(&data_path).expect("Unable to remove prefix");
+    }
+    let compat_tool = get_compat_tool_from_config();
+
+    info!("Recreating prefix with {} at {}", compat_tool.name, data_path.display());
+    let mut process = Command::new(compat_tool.path);
+    process
+        .args(&["run", "--", "/bin/true"])
+        .env("STEAM_COMPAT_DATA_PATH", data_path.to_str().unwrap())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .stdin(Stdio::inherit())
+        .status()
+        .unwrap();
+}
+
+pub fn has_command(cmd: String) -> Result<bool, Box<dyn Error>> {
+    Ok(Command::new("command").args(&["-v", cmd.as_str()]).status()?.success())
+}
+
+pub fn find_terminal_emulator() -> Option<String> {
+    let terminals = [
+        "x-terminal-emulator", "gnome-terminal", "konsole",
+        "xfce4-terminal", "tilix", "mate-terminal",
+        "lxterminal", "terminator", "xterm"
+    ];
+
+    for term in terminals {
+        if has_command(term.to_string()).is_ok() {
+            return Some(term.to_string())
+        }
+    }
+
+    eprintln!("No terminal emulator found.");
+    None
+}
+
+pub fn to_quoted_string(args: Vec<String>) -> String {
+    format!("\"{}\"", args.join("\" \""))
+}
+
+pub fn run_in_prefix(executable: PathBuf, in_terminal: bool) {
+    let compat_tool = get_compat_tool_from_config();
+    let wine_binary_path = PathBuf::from(compat_tool.dir_path).join("files/bin/wine");
+
+    let mut process = if in_terminal {
+        find_terminal_emulator().map(|terminal| {
+            let mut cmd = Command::new(terminal);
+            cmd.arg("-e");
+            cmd
+        }).unwrap_or_else(|| {
+            info!("Unable to find terminal emulator, falling back to sh");
+            let mut cmd = Command::new("sh");
+            cmd.arg("-c");
+            cmd
+        })
+    } else {
+        let mut cmd = Command::new("sh");
+        cmd.arg("-c");
+        cmd
+    };
+
+    process.envs(get_wine_variables())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .stdin(Stdio::inherit());
+
+    let mut cmd = Vec::new();
+
+    cmd.push(wine_binary_path.to_str().unwrap().to_string());
+    cmd.push(executable.to_str().unwrap().to_string());
+
+    let joined_cmd = to_quoted_string(cmd);
+    info!("Running cmd in prefix: {}", joined_cmd);
+
+    process
+        .arg(joined_cmd);
+
+    let status = process
+        .status().unwrap();
+
+    info!("Command exited with status code: {}", status);
 }
