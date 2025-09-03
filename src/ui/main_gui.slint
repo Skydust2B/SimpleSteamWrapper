@@ -75,8 +75,8 @@ export component MainGUI inherits Window {
 
                 select_gpu_check := CheckBox {
                     text: "Select Vulkan GPU (Using multiple env vars)";
-                    checked: AppConf.get_opt_bool("enabled_tweaks.select_gpu");
-                    toggled => { AppConf.set_opt_bool("enabled_tweaks.select_gpu", self.checked); }
+                    checked: AppConf.get_opt_bool("enabled_tweaks.gpu_tools");
+                    toggled => { AppConf.set_opt_bool("enabled_tweaks.gpu_tools", self.checked); }
                 }
 
                 ComboBox {

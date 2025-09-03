@@ -2,17 +2,16 @@ extern crate core;
 
 mod gui;
 mod tweaks;
-mod gpu;
 mod config;
 mod runner;
 mod install;
 pub(crate) mod tweak;
 mod compatibility_tools;
 mod vdf_tools;
+mod gpu_tools;
 
 use std::env;
 use std::fs::File;
-use std::io::BufReader;
 use tracing_subscriber::EnvFilter;
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use log::info;
@@ -21,9 +20,6 @@ use crate::config::config_loader::load_config;
 use crate::runner::game_process_wrapper::run_game_process;
 use crate::gui::show_gui;
 use crate::install::install::check_install;
-use crate::vdf_tools::binary_vdf_parser::hex_dump;
-use crate::vdf_tools::steam_appinfo_vdf_parser::parse_appinfo;
-use crate::vdf_tools::steam_packageinfo_vdf_parser::parse_packageinfo;
 
 slint::include_modules!();
 
@@ -36,13 +32,13 @@ fn main() {
     info!("RUST_LOG: {}", rust_log);
     load_config();
 
-    let mut pkg_file = File::open(get_steam_path().unwrap().join("appcache/packageinfo.vdf")).unwrap();
+    /*let mut pkg_file = File::open(get_steam_path().unwrap().join("appcache/packageinfo.vdf")).unwrap();
     let parsed = parse_packageinfo(&mut pkg_file).unwrap();
     info!("parsed packageinfo: {:?}", parsed.packages.len());
 
     let mut pkg_file = File::open(get_steam_path().unwrap().join("appcache/appinfo.vdf")).unwrap();
     let parsed = parse_appinfo(&mut pkg_file).unwrap();
-    info!("parsed app_info {}", parsed.apps.len());
+    info!("parsed app_info {}", parsed.apps.len());*/
 
     let is_in_steam_env = env::var("STEAM_COMPAT_APP_ID").and(Ok(true)).unwrap_or(false);
 
