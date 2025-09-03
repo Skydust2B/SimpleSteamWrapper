@@ -31,28 +31,44 @@ pub fn show_gui() {
             }
         });
 
-    window.on_recreate_prefix(|| {
-        tokio::spawn(async {
-            let reset = reset_prefix().await;
-            if reset.is_ok() {
-                show_message_dialog("Successfully recreated prefix");
-            } else {
-                show_message_dialog("Failed to recreated prefix");
-            }
-        });
+    window.on_recreate_prefix({
+        let weak_window = window.as_weak();
+        move || {
+            let weak_window = weak_window.clone();
+            tokio::spawn(async {
+                let reset = reset_prefix().await;
+                if reset.is_ok() {
+                    show_message_dialog("Successfully recreated prefix");
+                } else {
+                    show_message_dialog("Failed to recreated prefix");
+                }
+                slint::invoke_from_event_loop(move || {
+                    let upgraded_win = weak_window.upgrade().unwrap();
+                    upgraded_win.set_recreating_prefix(false);
+                })
+            });
+        }
     });
 
-    window.on_run_winetricks(|| {
-        tokio::spawn(async {
-            if which("winetricks").is_err() {
-                show_message_dialog("Could not find winetricks in the system path.");
-                return;
-            }
-            let run_winetricks = run_wiretricks_in_prefix().await;
-            if run_winetricks.is_err() {
-                show_message_dialog("Winetricks failed to run");
-            }
-        });
+    window.on_run_winetricks({
+        let weak_window = window.as_weak().clone();
+        move || {
+            let weak_window = weak_window.clone();
+            tokio::spawn(async move {
+                if which("winetricks").is_err() {
+                    show_message_dialog("Could not find winetricks in the system path.");
+                } else {
+                    let run_winetricks = run_wiretricks_in_prefix().await;
+                    if run_winetricks.is_err() {
+                        show_message_dialog("Winetricks failed to run");
+                    }
+                }
+                slint::invoke_from_event_loop(move || {
+                    let upgraded_win = weak_window.upgrade().unwrap();
+                    upgraded_win.set_running_winetricks(false);
+                })
+            });
+        }
     });
     
     let _ = window.show();

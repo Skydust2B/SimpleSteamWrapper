@@ -74,6 +74,7 @@ pub async fn reset_prefix() -> io::Result<ExitStatus> {
     let compat_tool = get_compat_tool_from_config();
 
     info!("Recreating prefix with {} at {}", compat_tool.name, data_path.display());
+    tokio::fs::create_dir_all(&data_path).await.expect("Unable to create prefix");
     let mut process = Command::new(compat_tool.path);
 
     process

@@ -2,7 +2,7 @@ import { ComboBox, CheckBox, VerticalBox, HorizontalBox, SpinBox, Button, Scroll
 
 export component PrefixSettingsGUI inherits Window {
     width: 500px;
-    height: 500px;
+    height: 300px;
     title: "Simple Steam Wrapper - Prefix";
 
     in property <string> game_app_id: "0";
@@ -10,6 +10,9 @@ export component PrefixSettingsGUI inherits Window {
     in property <string> prefix_path: "///";
 
     in property <string> runner_name: "";
+
+    in-out property <bool> recreating_prefix: false;
+    in-out property <bool> running_winetricks: false;
 
     callback recreate_prefix();
     callback run_winetricks();
@@ -29,13 +32,27 @@ export component PrefixSettingsGUI inherits Window {
         ScrollView {
             viewport-width: self.width;
             VerticalBox {
-                Button {
-                    text: "Recreate Prefix";
-                    clicked => { recreate_prefix() }
+                HorizontalBox {
+                    Button {
+                        enabled: !recreating_prefix;
+                        vertical-stretch: 0;
+                        text: "Recreate Prefix";
+                        clicked => {
+                            recreating_prefix = true;
+                            recreate_prefix()
+                        }
+                    }
                 }
-                Button {
-                    text: "Winetricks";
-                    clicked => { run_winetricks() }
+                HorizontalBox {
+                    Button {
+                        enabled: !running_winetricks;
+                        vertical-stretch: 0;
+                        text: "Winetricks";
+                        clicked => {
+                            running_winetricks = true;
+                            run_winetricks()
+                        }
+                    }
                 }
                 HorizontalBox {
                     Button {
