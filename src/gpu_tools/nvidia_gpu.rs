@@ -20,7 +20,6 @@ pub fn get_nvidia_gpu_uuid(gpu: &GPU) -> Result<String, Box<dyn Error>> {
                  line[1].to_string())
             }).collect::<Vec<(u32, String)>>();
 
-        info!("Detected GPUs:\n{:?}", parsed_gpus);
         if let Some((_, uuid)) = parsed_gpus.iter().find(|(d_id, _uuid)|
             (d_id >> 16) as u16 == gpu.device_id) {
             return Ok(uuid.to_string());

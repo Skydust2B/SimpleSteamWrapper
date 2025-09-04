@@ -18,9 +18,8 @@ pub fn show_gui() {
     let shared_pfx_ref: Arc<Mutex<AppPrefix>> = Arc::new(Mutex::new(AppPrefix::from_env()));
 
     window.set_prefix_path({
-        let shared_pfx_ref = Arc::clone(&shared_pfx_ref);
-        let borrowed_pfx_ref = shared_pfx_ref.blocking_lock();
-        SharedString::from(borrowed_pfx_ref.as_path().to_str().unwrap_or(""))
+        let prefix = AppPrefix::from_env();
+        SharedString::from(prefix.as_path().to_str().unwrap_or(""))
     });
 
     let compat_tool = get_compat_tool_from_config();
