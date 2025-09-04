@@ -58,5 +58,8 @@ pub fn get_gpu_select_env_vars(gpu: &GPU) -> Vec<(String, String)> {
         env_vars = [env_vars, get_nvidia_gpu_env_vars(gpu)].concat();
     }
     env_vars = [env_vars, get_vulkan_gpu_env_vars(&gpu)].concat();
+
+    env_vars.push(("DRI_PRIME".to_string(), gpu.as_formatted_id()));
+
     env_vars
 }
