@@ -23,5 +23,8 @@ byteorder = "1.5.0"
 tokio = { version = "1.47.1", features = ["rt", "rt-multi-thread", "macros", "process", "fs", "sync"] }
 which = "8.0.0"
 
+[build]
+rustc-wrapper = "sccache"
+
 [build-dependencies]
 slint-build = "1.12.1"
