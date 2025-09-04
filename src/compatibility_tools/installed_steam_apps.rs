@@ -2,27 +2,26 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
-use crate::compatibility_tools::steam::get_steam_path;
-use crate::vdf_tools::vdf_simple_parser::read_vdf;
+use crate::compatibility_tools::steam::{get_steam_path, read_vdf};
 
 #[derive(Clone)]
-pub struct InstalledSteamGame {
+pub struct InstalledSteamApp {
     pub id: String,
     pub name: String,
     pub path: PathBuf
 }
 
-static INSTALLED_STEAM_APPS: Lazy<Mutex<HashMap<String, InstalledSteamGame>>> = Lazy::new(|| {
+static INSTALLED_STEAM_APPS: Lazy<Mutex<HashMap<String, InstalledSteamApp>>> = Lazy::new(|| {
     let apps = get_installed_steam_apps_inner();
     Mutex::new(apps)
 });
 
-fn get_installed_steam_apps_inner() -> HashMap<String, InstalledSteamGame> {
+fn get_installed_steam_apps_inner() -> HashMap<String, InstalledSteamApp> {
     let library_vdf_path = get_steam_path().unwrap().join("steamapps/libraryfolders.vdf");
     let library_vdf = read_vdf(library_vdf_path);
     let libraries = library_vdf["libraryfolders"].as_table().unwrap().values();
 
-    let mut installed_steam_apps: HashMap<String, InstalledSteamGame> = HashMap::new();
+    let mut installed_steam_apps: HashMap<String, InstalledSteamApp> = HashMap::new();
 
     for library in libraries {
         let library_path = PathBuf::from(library.get("path").unwrap().as_str().unwrap());
@@ -32,7 +31,7 @@ fn get_installed_steam_apps_inner() -> HashMap<String, InstalledSteamGame> {
             let app_manifest_path = library_path.join(format!("steamapps/appmanifest_{}.acf", app));
             let app_manifest = read_vdf(app_manifest_path);
             let manifest_root = app_manifest.get("AppState").unwrap().as_table().unwrap();
-            installed_steam_apps.insert(app.to_string(), InstalledSteamGame {
+            installed_steam_apps.insert(app.to_string(), InstalledSteamApp {
                 id: app.to_string(),
                 name: manifest_root.get("name").unwrap().as_str().unwrap().to_string(),
                 path: library_path
@@ -46,6 +45,6 @@ fn get_installed_steam_apps_inner() -> HashMap<String, InstalledSteamGame> {
     installed_steam_apps
 }
 
-pub fn get_installed_steam_apps() -> HashMap<String, InstalledSteamGame> {
+pub fn get_installed_steam_apps() -> HashMap<String, InstalledSteamApp> {
     INSTALLED_STEAM_APPS.lock().unwrap().clone()
 }

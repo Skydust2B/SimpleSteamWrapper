@@ -37,7 +37,6 @@ pub fn get_gpu_from_config() -> GPU {
 }
 
 pub fn list_all_gpus() -> Vec<GPU> {
-    // Enumerate all PCI devices
     let devices = PciInfo::enumerate_pci().unwrap();
 
     let mut valid_gpus = Vec::<GPU>::new();

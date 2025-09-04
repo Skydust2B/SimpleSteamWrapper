@@ -3,9 +3,10 @@ use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use log::info;
 use crate::command_helpers::to_quoted_string;
+use crate::compatibility_tools::app_prefix::AppPrefix;
 use crate::config::config::{Config};
 use crate::config::config_loader::LOADED_CONFIG;
-use crate::compatibility_tools::compat_tools_wrapper::{get_compat_tool_from_config};
+use crate::compatibility_tools::compat_tool::{get_compat_tool_from_config};
 use crate::compatibility_tools::steam::{get_steam_sniper_runtime};
 use crate::tweak::{list_tweaks, Tweak};
 
@@ -53,7 +54,8 @@ pub fn run_game_process() {
             None => panic!("No steam runtime found")
         };
         let steam_runtime_run_path = PathBuf::from(steam_runtime.path).join("_v2-entry-point");
-        env::var("STEAM_COMPAT_DATA_PATH").expect("STEAM_COMPAT_DATA_PATH must be set");
+
+        AppPrefix::from_env(); // Used to validate proton env
 
         let compat_tool = get_compat_tool_from_config();
         let mut wrapper_prepared_command = String::new();

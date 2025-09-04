@@ -6,12 +6,11 @@ mod runner;
 mod install;
 pub(crate) mod tweak;
 mod compatibility_tools;
-mod vdf_tools;
 mod gpu_tools;
 mod command_helpers;
 mod gui;
 
-use std::env;
+use std::{env};
 use tracing_subscriber::EnvFilter;
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use log::info;
@@ -33,7 +32,6 @@ async fn main() {
     load_config();
 
     let is_in_steam_env = env::var("STEAM_COMPAT_APP_ID").and(Ok(true)).unwrap_or(false);
-
     if !is_in_steam_env {
         info!("Outside steam, running GUI");
         check_install();

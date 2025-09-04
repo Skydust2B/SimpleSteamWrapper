@@ -6,7 +6,7 @@ use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
 use crate::config::config::Config;
 use crate::config::config_loader::{get_serialized_config_value, get_steam_app_id, reset_serialized_opts_to_defaults, set_serialized_config_value, LOADED_CONFIG};
 use crate::{AppConf, MainGUI};
-use crate::compatibility_tools::compat_tools_wrapper::{get_compat_tool_from_config};
+use crate::compatibility_tools::compat_tool::{get_compat_tool_from_config};
 use crate::compatibility_tools::steam::list_steam_compat_tools;
 use crate::gpu_tools::gpu::{get_gpu_from_config, list_all_gpus};
 use crate::gui::dialog::show_message_dialog;
@@ -123,7 +123,7 @@ pub fn show_gui() {
         let weak_window = window.as_weak();
         move |key| {
             let is_editing_defaults = weak_window.upgrade().unwrap().get_editing_defaults();
-            let get_conf = shared_serialized_conf.borrow(); // borrow here, inside the closure
+            let get_conf = shared_serialized_conf.borrow();
             get_serialized_config_value(&get_conf, &key, is_editing_defaults)
         }
     });
