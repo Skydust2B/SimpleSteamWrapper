@@ -2,7 +2,6 @@ use std::{env, io};
 use std::path::PathBuf;
 use std::process::{ExitStatus, Stdio};
 use log::info;
-use shlex::split;
 use tokio::process::Command;
 use crate::command_helpers::{find_terminal_emulator, to_quoted_string};
 use crate::compatibility_tools::compat_tool::{CompatTool};
