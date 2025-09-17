@@ -16,7 +16,7 @@ export component PrefixSettingsGUI inherits Window {
 
     callback recreate_prefix();
     callback run_winetricks();
-    callback run_in_prefix(bool);
+    callback run_in_prefix(bool, string);
 
     VerticalBox {
         Text {
@@ -55,10 +55,11 @@ export component PrefixSettingsGUI inherits Window {
                     }
                 }
                 HorizontalBox {
+                    cmd := LineEdit {}
                     Button {
                         horizontal-stretch: 1;
                         text: "Run in game prefix";
-                        clicked => { run_in_prefix(in_terminal.checked) }
+                        clicked => { run_in_prefix(in_terminal.checked, cmd.text) }
                     }
                     in_terminal := CheckBox {
                         text: "In terminal";

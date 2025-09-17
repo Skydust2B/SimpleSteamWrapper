@@ -4,6 +4,7 @@ use tokio::sync::{Mutex};
 use rfd::FileDialog;
 use slint::{ComponentHandle, SharedString};
 use which::which;
+use crate::command_helpers::parse_cmdline;
 use crate::compatibility_tools::compat_tool::{get_compat_tool_from_config};
 use crate::compatibility_tools::app_prefix::{AppPrefix};
 use crate::config::config_loader::{get_steam_app_id};
@@ -27,17 +28,28 @@ pub fn show_gui() {
 
     window.on_run_in_prefix({
         let shared_pfx_ref = Arc::clone(&shared_pfx_ref);
-        move |in_terminal| {
-            if let Some(path) = FileDialog::new()
-                .add_filter("Windows Executables", &["exe","msi","msix"])
-                .add_filter("Windows Scripts", &["bat", "cmd"])
-                .pick_file() {
+        move |in_terminal, custom_cmd| {
+            let new_command = if custom_cmd.is_empty() {
+                FileDialog::new()
+                    .add_filter("Windows Executables", &["exe","msi","msix"])
+                    .add_filter("Windows Scripts", &["bat", "cmd"])
+                    .pick_file().and_then(|p| Some(SharedString::from(p.to_str().unwrap_or_default())))
+            } else {
+                Some(custom_cmd)
+            };
+
+            if let Some(cmd) = new_command {
                 let shared_pfx_ref = Arc::clone(&shared_pfx_ref);
+                let parsed_cmd = parse_cmdline(cmd.as_str());
                 tokio::spawn(async move {
                     let borrowed_pfx_ref = shared_pfx_ref.lock().await;
+                    let mut cmd_to_run = Command::new(parsed_cmd.progname);
+                    cmd_to_run.envs(parsed_cmd.env);
+                    cmd_to_run.args(parsed_cmd.args);
+
                     let status = borrowed_pfx_ref.run_in_prefix(
                         &get_compat_tool_from_config(),
-                        Command::new(path),
+                        cmd_to_run,
                         in_terminal
                     ).await;
                     show_message_dialog(&format!("App finished with exit code {}", status.unwrap()));

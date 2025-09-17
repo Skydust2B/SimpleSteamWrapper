@@ -7,7 +7,7 @@ const COMPATIBILITY_TOOL_VDF: &str = r#""compatibilitytools"
 {
   "compat_tools"
   {
-    "SimpleSteamWrapper" // Internal name of this tool
+    "Proton-SimpleSteamWrapper" // Internal name of this tool
     {
       // Can register this tool with Steam in two ways:
       //
