@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
 use std::string::ToString;
@@ -22,9 +23,9 @@ const STEAM_VALID_COMPAT_APPIDS: [&str; 14] = [
     "858280",
 ];
 
-pub fn read_vdf(path: PathBuf) -> Table {
-    let text = fs::read_to_string(path).unwrap();
-    Table::load_from_str(&text).unwrap()
+pub fn read_vdf(path: &PathBuf) -> Result<Table, Box<dyn Error>> {
+    let text = fs::read_to_string(&path).expect(&format!("Unable to find {}", path.display()));
+    Ok(Table::load_from_str(&text)?)
 }
 
 pub fn get_steam_path() -> Option<PathBuf> {
@@ -35,7 +36,11 @@ pub fn get_steam_path() -> Option<PathBuf> {
         base.join(".local/share/Steam"),
         base.join(".steam/steam"),
     ];
-    candidates.into_iter().find(|p| p.exists())
+    let path = candidates.into_iter().find(|p| p.exists());
+    if path.is_none() {
+        panic!("Can't find steam folder");
+    }
+    path
 }
 
 pub fn get_steam_sniper_runtime() -> Option<InstalledSteamApp> {
@@ -50,30 +55,30 @@ pub fn get_steam_compat_tools_path() -> PathBuf {
     PathBuf::from(get_steam_path().unwrap()).join("compatibilitytools.d")
 }
 
-pub fn read_cmd_from_manifest(manifest_path: PathBuf) -> String {
-    let tool_manifest = read_vdf(manifest_path);
+pub fn read_cmd_from_manifest(manifest_path: &PathBuf) -> Result<String, Box<dyn Error>> {
+    let tool_manifest = read_vdf(&manifest_path)?;
 
-    tool_manifest["manifest"]
+    Ok(tool_manifest["manifest"]
         .get("commandline")
         .and_then(|v| v.as_str())
         .unwrap_or_else(|| "")
         .to_string()
         .strip_prefix("/").unwrap_or_else(|| "")
-        .to_string()
+        .to_string())
 }
 
-pub fn parse_steam_compat_tool_from_app(app: InstalledSteamApp) -> CompatTool {
-    let cmd = read_cmd_from_manifest(app.path.join("toolmanifest.vdf"));
-    CompatTool {
+pub fn parse_steam_compat_tool_from_app(app: InstalledSteamApp) -> Result<CompatTool, Box<dyn Error>> {
+    let cmd = read_cmd_from_manifest(&app.path.join("toolmanifest.vdf"))?;
+    Ok(CompatTool {
         name: app.name.to_string(),
         dir_path: app.path.to_str().unwrap().to_string(),
         path: app.path.join(cmd.replace(" %verb%", ""))
             .to_str().unwrap().to_string()
-    }
+    })
 }
 
-pub fn parse_steam_compat_tool(path: PathBuf) -> CompatTool {
-    let compat_tool_vdf = read_vdf(path.join("compatibilitytool.vdf"));
+pub fn parse_steam_compat_tool(path: PathBuf) -> Result<CompatTool, Box<dyn Error>> {
+    let compat_tool_vdf = read_vdf(&path.join("compatibilitytool.vdf"))?;
     let compat_tool_data: &Entry = compat_tool_vdf["compatibilitytools"]
         .get("compat_tools")
         .and_then(|v| v.as_table())
@@ -88,14 +93,14 @@ pub fn parse_steam_compat_tool(path: PathBuf) -> CompatTool {
 
     let compat_tool_display_name = compat_tool_data.get("display_name").unwrap().as_str().unwrap_or_else(|| "Borken");
 
-    let cmd = read_cmd_from_manifest(path.join("toolmanifest.vdf"));
+    let cmd = read_cmd_from_manifest(&path.join("toolmanifest.vdf"))?;
 
-    CompatTool {
+    Ok(CompatTool {
         name: compat_tool_display_name.to_string(),
         dir_path: compat_tool_dir_path.to_str().unwrap().to_string(),
         path: compat_tool_dir_path.join(cmd.replace(" %verb%", ""))
             .to_str().unwrap().to_string()
-    }
+    })
 }
 
 pub fn list_steam_compat_tools() -> Vec<CompatTool> {
@@ -106,7 +111,9 @@ pub fn list_steam_compat_tools() -> Vec<CompatTool> {
         for entry in entries.flatten() {
             let path = entry.path();
             if path.is_dir() {
-                results.push(parse_steam_compat_tool(path));
+                if let Ok(steam_compat_tool) = parse_steam_compat_tool(path) {
+                    results.push(steam_compat_tool);
+                }
             }
         }
     }
@@ -114,7 +121,9 @@ pub fn list_steam_compat_tools() -> Vec<CompatTool> {
     let steam_apps = get_installed_steam_apps();
     STEAM_VALID_COMPAT_APPIDS.iter().for_each(|app_id| {
         if let Some(app) = steam_apps.get(&app_id.to_string()) {
-            results.push(parse_steam_compat_tool_from_app(app.clone()));
+            if let Ok(steam_compat_tool) = parse_steam_compat_tool_from_app(app.clone()) {
+                results.push(steam_compat_tool);
+            }
         }
     });
 

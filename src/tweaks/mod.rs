@@ -5,3 +5,5 @@ pub(crate) mod gamescope;
 pub(crate) mod dxvk_hud_mode;
 mod mangohud;
 mod custom_env_vars;
+mod proton_wayland;
+mod proton_nvapi_vkreflex;

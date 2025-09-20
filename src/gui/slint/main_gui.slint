@@ -61,15 +61,28 @@ export component MainGUI inherits Window {
                     selected(current-value) => { AppConf.set_opt("selected_gpu", get_combobox_gpu_id(self.current-index)) }
                 }
 
-                CheckBox {
-                    text: "Use NVAPI extensions (PROTON_USE_NVAPI)";
-                    checked: AppConf.get_opt_bool("enabled_tweaks.proton_nvapi");
-                    toggled => { AppConf.set_opt_bool("enabled_tweaks.proton_nvapi", self.checked); }
+                HorizontalLayout {
+                    nvapi := CheckBox {
+                        text: "Use NVAPI extensions";
+                        checked: AppConf.get_opt_bool("enabled_tweaks.proton_nvapi");
+                        toggled => { AppConf.set_opt_bool("enabled_tweaks.proton_nvapi", self.checked); }
+                    }
+                    if (nvapi.checked): CheckBox {
+                        text: "VKReflex";
+                        checked: AppConf.get_opt_bool("enabled_tweaks.proton_nvapi_vkreflex");
+                        toggled => { AppConf.set_opt_bool("enabled_tweaks.proton_nvapi_vkreflex", self.checked); }
+                    }
                 }
+
                 CheckBox {
                     text: "Feral's Gamemode";
                     checked: AppConf.get_opt_bool("enabled_tweaks.gamemode");
                     toggled => { AppConf.set_opt_bool("enabled_tweaks.gamemode", self.checked); }
+                }
+                CheckBox {
+                    text: "Enable wayland support (GE-Proton/proton-cachyos)";
+                    checked: AppConf.get_opt_bool("enabled_tweaks.proton_wayland");
+                    toggled => { AppConf.set_opt_bool("enabled_tweaks.proton_wayland", self.checked); }
                 }
                 gamescope_check := CheckBox {
                     text: "Use Gamescope";
@@ -93,6 +106,11 @@ export component MainGUI inherits Window {
                                 text: "Force Grab Cursor";
                                 checked: AppConf.get_opt_bool("gamescope_settings.force_grab_cursor");
                                 toggled => { AppConf.set_opt_bool("gamescope_settings.force_grab_cursor", self.checked) }
+                            }
+                            CheckBox {
+                                text: "HDR";
+                                checked: AppConf.get_opt_bool("gamescope_settings.hdr");
+                                toggled => { AppConf.set_opt_bool("gamescope_settings.hdr", self.checked) }
                             }
                         }
                         HorizontalBox {
@@ -184,7 +202,7 @@ export component MainGUI inherits Window {
                      VerticalBox {
                         if (env_vars.length > 0):
                         ListView {
-                            preferred-height: 75px;
+                            max-height: 250px;
                             for row[idx] in env_vars: HorizontalBox {
                                 LineEdit { text: row.key; edited => { row.key = self.text; } }
                                 LineEdit { text: row.value; edited => { row.value = self.text } }

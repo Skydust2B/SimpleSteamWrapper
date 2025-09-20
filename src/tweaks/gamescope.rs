@@ -9,7 +9,8 @@ pub struct GamescopeSettings {
     pub forced_height: i32,
     pub fullscreen: bool,
     pub framerate: i32,
-    pub force_grab_cursor: bool
+    pub force_grab_cursor: bool,
+    pub hdr: bool
 }
 
 #[tweak(name = "gamescope", priority = 100)]
@@ -34,6 +35,9 @@ pub fn run(_: &mut Command, prepared_command: &mut Vec<String>) {
     if settings.framerate > 0 {
         gamescope_cmd.push("-r".to_string());
         gamescope_cmd.push(settings.framerate.to_string());
+    }
+    if settings.hdr {
+        gamescope_cmd.push("--enable-hdr".to_string());
     }
     gamescope_cmd.push("--".to_string());
 
