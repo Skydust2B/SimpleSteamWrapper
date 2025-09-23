@@ -8,3 +8,5 @@ mod custom_env_vars;
 mod proton_wayland;
 mod proton_nvapi_vkreflex;
 mod proton_wayland_hdr;
+mod nvidia_vram_workarounds;
+
