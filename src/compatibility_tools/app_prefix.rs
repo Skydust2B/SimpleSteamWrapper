@@ -63,6 +63,10 @@ impl AppPrefix {
         let prefix_top_folder = self.as_path();
 
         info!("Recreating prefix with {} at {}", compat_tool.name, prefix_top_folder.display());
+        if prefix_top_folder.exists() {
+            info!("Removing prefix {}", prefix_top_folder.display());
+            tokio::fs::remove_dir_all(&prefix_top_folder).await.expect("Could not remove prefix");
+        }
         tokio::fs::create_dir_all(&prefix_top_folder).await.expect("Unable to create prefix");
 
         let mut process = Command::new(compat_tool.clone().path);

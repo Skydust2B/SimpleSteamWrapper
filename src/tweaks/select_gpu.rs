@@ -25,15 +25,6 @@ pub fn get_vulkan_gpu_env_vars(gpu: &GPU) -> Vec<(String,String)> {
         gpu.as_formatted_id()
     ));
 
-    env_vars.push((
-        "DXVK_FILTER_DEVICE_NAME".to_string(),
-        gpu.name.clone()
-    ));
-    env_vars.push((
-        "VKD3D_FILTER_DEVICE_NAME".to_string(),
-        gpu.name.clone()
-    ));
-
     env_vars
 }
 

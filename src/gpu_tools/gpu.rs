@@ -1,4 +1,4 @@
-use log::warn;
+use log::{warn};
 use pci_ids::{FromId, Vendor};
 use pci_info::PciInfo;
 use pci_info::pci_enums::PciDeviceClass;

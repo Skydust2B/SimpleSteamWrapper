@@ -65,7 +65,12 @@ export component MainGUI inherits Window {
                     nvapi := CheckBox {
                         text: "Use NVAPI extensions";
                         checked: AppConf.get_opt_bool("enabled_tweaks.proton_nvapi");
-                        toggled => { AppConf.set_opt_bool("enabled_tweaks.proton_nvapi", self.checked); }
+                        toggled => {
+                            if (!self.checked) {
+                                AppConf.set_opt_bool("enabled_tweaks.proton_nvapi_vkreflex", self.checked);
+                            }
+                            AppConf.set_opt_bool("enabled_tweaks.proton_nvapi", self.checked);
+                        }
                     }
                     if (nvapi.checked): CheckBox {
                         text: "VKReflex";
