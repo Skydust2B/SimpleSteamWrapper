@@ -1,9 +1,9 @@
-use std::error::Error;
 use std::process::Command;
+use anyhow::anyhow;
 use log::{info};
 use crate::gpu_tools::gpu::GPU;
 
-pub fn get_nvidia_gpu_uuid(gpu: &GPU) -> Result<String, Box<dyn Error>> {
+pub fn get_nvidia_gpu_uuid(gpu: &GPU) -> anyhow::Result<String> {
     let result = Command::new("nvidia-smi")
         .arg("--query-gpu=pci.device_id,uuid")
         .arg("--format=csv,noheader")
@@ -25,5 +25,5 @@ pub fn get_nvidia_gpu_uuid(gpu: &GPU) -> Result<String, Box<dyn Error>> {
             return Ok(uuid.to_string());
         }
     }
-    Err("Unable to find the NVIDIA GPU UUID".into())
+    Err(anyhow!("Unable to find the NVIDIA GPU UUID"))
 }

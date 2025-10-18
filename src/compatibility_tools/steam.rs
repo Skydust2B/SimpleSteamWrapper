@@ -1,7 +1,7 @@
-use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
 use std::string::ToString;
+use anyhow::Context;
 use vdf_reader::entry::{Entry, Table};
 use crate::compatibility_tools::compat_tool::{CompatTool};
 use crate::compatibility_tools::installed_steam_apps::{get_installed_steam_apps, InstalledSteamApp};
@@ -23,8 +23,9 @@ const STEAM_VALID_COMPAT_APPIDS: [&str; 14] = [
     "858280",
 ];
 
-pub fn read_vdf(path: &PathBuf) -> Result<Table, Box<dyn Error>> {
-    let text = fs::read_to_string(&path).expect(&format!("Unable to find {}", path.display()));
+pub fn read_vdf(path: &PathBuf) -> anyhow::Result<Table> {
+    let text = fs::read_to_string(&path)
+        .with_context(|| format!("Unable to find {}", path.display()))?;
     Ok(Table::load_from_str(&text)?)
 }
 
@@ -55,7 +56,7 @@ pub fn get_steam_compat_tools_path() -> PathBuf {
     PathBuf::from(get_steam_path().unwrap()).join("compatibilitytools.d")
 }
 
-pub fn read_cmd_from_manifest(manifest_path: &PathBuf) -> Result<String, Box<dyn Error>> {
+pub fn read_cmd_from_manifest(manifest_path: &PathBuf) -> anyhow::Result<String> {
     let tool_manifest = read_vdf(&manifest_path)?;
 
     Ok(tool_manifest["manifest"]
@@ -67,7 +68,7 @@ pub fn read_cmd_from_manifest(manifest_path: &PathBuf) -> Result<String, Box<dyn
         .to_string())
 }
 
-pub fn parse_steam_compat_tool_from_app(app: InstalledSteamApp) -> Result<CompatTool, Box<dyn Error>> {
+pub fn parse_steam_compat_tool_from_app(app: InstalledSteamApp) -> anyhow::Result<CompatTool> {
     let cmd = read_cmd_from_manifest(&app.path.join("toolmanifest.vdf"))?;
     Ok(CompatTool {
         name: app.name.to_string(),
@@ -77,7 +78,7 @@ pub fn parse_steam_compat_tool_from_app(app: InstalledSteamApp) -> Result<Compat
     })
 }
 
-pub fn parse_steam_compat_tool(path: PathBuf) -> Result<CompatTool, Box<dyn Error>> {
+pub fn parse_steam_compat_tool(path: PathBuf) -> anyhow::Result<CompatTool> {
     let compat_tool_vdf = read_vdf(&path.join("compatibilitytool.vdf"))?;
     let compat_tool_data: &Entry = compat_tool_vdf["compatibilitytools"]
         .get("compat_tools")
@@ -89,7 +90,7 @@ pub fn parse_steam_compat_tool(path: PathBuf) -> Result<CompatTool, Box<dyn Erro
         compat_tool_data.get("install_path")
             .and_then(|v| v.as_str())
             .unwrap_or_else(|| "")
-    ).canonicalize().unwrap();
+    ).canonicalize()?;
 
     let compat_tool_display_name = compat_tool_data.get("display_name").unwrap().as_str().unwrap_or_else(|| "Borken");
 
