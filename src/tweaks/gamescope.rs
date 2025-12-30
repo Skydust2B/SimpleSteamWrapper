@@ -37,7 +37,7 @@ pub fn run(_: &mut Command, prepared_command: &mut Vec<String>) {
         gamescope_cmd.push(settings.framerate.to_string());
     }
     if settings.hdr {
-        gamescope_cmd.push("--enable-hdr".to_string());
+        gamescope_cmd.push("--hdr-enabled".to_string());
     }
     gamescope_cmd.push("--".to_string());
 
