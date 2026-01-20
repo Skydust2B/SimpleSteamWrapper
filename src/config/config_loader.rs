@@ -1,5 +1,7 @@
 use std::{env, fs};
+use std::cell::RefCell;
 use std::path::PathBuf;
+use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use directories::ProjectDirs;
 use log::info;
@@ -157,6 +159,13 @@ fn parse_guess(val: String) -> Value {
     } else {
         Value::String(val.to_string())
     }
+}
+
+
+/// Deserializes and saves the config in memory
+pub fn update_config_from_serialized(serialized_conf: &Rc<RefCell<Value>>) {
+    let updated_conf: Config = serde_yaml::from_value((*serialized_conf.borrow()).clone()).unwrap();
+    LOADED_CONFIG.set_config(updated_conf);
 }
 
 /// Traverse a `serde_yaml::Value` by a dotted key and set it to a new string value.

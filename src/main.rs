@@ -9,6 +9,7 @@ mod compatibility_tools;
 mod gpu_tools;
 mod command_helpers;
 mod gui;
+mod dl_manager;
 
 use std::{env};
 use tracing_subscriber::EnvFilter;

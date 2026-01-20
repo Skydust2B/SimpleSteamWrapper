@@ -1,0 +1,101 @@
+import { ComboBox, CheckBox, VerticalBox, HorizontalBox, SpinBox, Button, ScrollView, ListView, LineEdit, ProgressIndicator } from "std-widgets.slint";
+
+// TODO: If auto-update on, check corresponding update on startup and add a 'last-update' to not spam the check
+// TODO: On DLManager open, fetch corresponding GEProton and proton-cachyos versions
+// TODO: Versions that are already installed in steam need to simply be "Installed"
+export component DlManagerGUI inherits Window {
+    width: 400px;
+    height: 500px;
+    title: "Simple Steam Wrapper - Download Manager";
+
+    in property <bool> is_downloading;
+    VerticalBox {
+        HorizontalBox {
+            ComboBox {
+                model: ["proton-cachyos", "GEProton"];
+            }
+        }
+        ScrollView {
+            VerticalBox {
+                alignment: LayoutAlignment.start;
+                Rectangle {
+                    border-color: darkgrey;
+                    border-width: 1px;
+                    border-radius: 3px;
+                    VerticalBox {
+                        alignment: LayoutAlignment.start;
+                        HorizontalLayout {
+                            padding: 0;
+                            Text {
+                                vertical-alignment: center;
+                                text: "proton-cachyos-latest";
+                            }
+                            VerticalLayout {
+                                horizontal-stretch: 0;
+                                spacing: 5px;
+                                Button {
+                                    max-width: self.preferred-width;
+                                    text: "Install";
+                                }
+
+                                CheckBox {
+                                    horizontal-stretch: 0;
+                                    text: "Auto-update";
+                                }
+                            }
+                        }
+                        if is_downloading: HorizontalBox {
+                           alignment: stretch;
+
+                           VerticalLayout {
+                               alignment: center;
+                               ProgressIndicator {
+                                   height: 2px;
+                                   progress: 80%;
+                               }
+                           }
+
+                           Text {
+                               text: "80%";
+                           }
+                       }
+                    }
+                }
+                Rectangle {
+                    border-color: darkgrey;
+                    border-width: 1px;
+                    border-radius: 3px;
+                    VerticalBox {
+                        alignment: LayoutAlignment.start;
+                        HorizontalLayout {
+                            padding: 0;
+                            Text {
+                                vertical-alignment: center;
+                                text: "proton-cachyos-18";
+                            }
+                            Button {
+                                max-width: self.preferred-width;
+                                text: "Install";
+                            }
+                        }
+                        HorizontalBox {
+                            alignment: stretch;
+
+                            VerticalLayout {
+                                alignment: center;
+                                ProgressIndicator {
+                                    height: 2px;
+                                    progress: 80%;
+                                }
+                            }
+
+                            Text {
+                                text: "80%";
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -3,8 +3,7 @@ use std::rc::Rc;
 use log::{debug};
 use serde_yaml::Value;
 use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
-use crate::config::config::Config;
-use crate::config::config_loader::{get_serialized_config_value, get_steam_app_id, reset_serialized_opts_to_defaults, set_serialized_config_value, LOADED_CONFIG};
+use crate::config::config_loader::{get_serialized_config_value, get_steam_app_id, reset_serialized_opts_to_defaults, set_serialized_config_value, update_config_from_serialized, LOADED_CONFIG};
 use crate::{AppConf, MainGUI};
 use crate::compatibility_tools::compat_tool::{get_compat_tool_from_config};
 use crate::compatibility_tools::steam::list_steam_compat_tools;
@@ -193,6 +192,13 @@ pub fn show_gui() {
         show_message_dialog("Successfully updated wrapper");
     });
 
+    window.on_show_download_runner({
+    let shared_serialized_conf = Rc::clone(&serialized_conf);
+    move || {
+        update_config_from_serialized(&shared_serialized_conf);
+        crate::gui::dl_manager_gui::show_gui();
+    }});
+
     window.on_reset_to_defaults({
         let shared_serialized_conf = Rc::clone(&serialized_conf);
         let weak_window = window.as_weak();
@@ -210,14 +216,14 @@ pub fn show_gui() {
         move || {
             let window_save = weak_window.upgrade().unwrap();
             save_custom_values_into_conf(&window_save, shared_serialized_conf.clone());
+            update_config_from_serialized(&shared_serialized_conf);
         }
     });
 
     window.on_show_prefix_options({
         let shared_serialized_conf = Rc::clone(&serialized_conf);
         move || {
-            let updated_conf: Config = serde_yaml::from_value((*shared_serialized_conf.borrow()).clone()).unwrap();
-            LOADED_CONFIG.set_config(updated_conf);
+            update_config_from_serialized(&shared_serialized_conf);
             crate::gui::prefix_gui::show_gui();
         }
     });
@@ -225,7 +231,6 @@ pub fn show_gui() {
     let _ = window.run().unwrap();
     save_custom_values_into_conf(&window, serialized_conf.clone());
 
-    let updated_conf: Config = serde_yaml::from_value((*serialized_conf.borrow()).clone()).unwrap();
-    LOADED_CONFIG.set_config(updated_conf);
+    update_config_from_serialized(&serialized_conf);
     LOADED_CONFIG.save();
 }

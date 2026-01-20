@@ -14,6 +14,7 @@ export component MainGUI inherits Window {
 
     in-out property <bool> editing_defaults;
 
+    pure callback show_download_runner();
     in property <string> app_version;
     callback reset_to_defaults();
     
@@ -42,10 +43,16 @@ export component MainGUI inherits Window {
 
                 Text { text: "Choose runner (Use ProtonUpQt to add more)"; }
 
-                ComboBox {
-                    model: root.compat_tools;
-                    current-index <=> selected_compat_tool_index;
-                    selected(current-value) => { AppConf.set_opt("compat_tool", current-value) }
+                HorizontalBox {
+                    ComboBox {
+                        model: root.compat_tools;
+                        current-index <=> selected_compat_tool_index;
+                        selected(current-value) => { AppConf.set_opt("compat_tool", current-value) }
+                    }
+                    Button {
+                        text: "↓";
+                        clicked => { show_download_runner(); }
+                    }
                 }
 
                 select_gpu_check := CheckBox {
@@ -58,7 +65,7 @@ export component MainGUI inherits Window {
                     model: root.gpus;
                     enabled: select_gpu_check.checked;
                     current-index <=> selected_gpu_index;
-                    selected(current-value) => { AppConf.set_opt("selected_gpu", get_combobox_gpu_id(self.current-index)) }
+                    selected(current-value) => { AppConf.set_opt("selected_gpu", get_combobox_gpu_id(self.current-index)); }
                 }
 
                 HorizontalLayout {
