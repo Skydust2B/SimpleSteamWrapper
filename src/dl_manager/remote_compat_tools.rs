@@ -11,7 +11,7 @@ pub const DOWNLOADABLE_COMPAT_TOOLS: &[DownloadableCompatTool] = &[
     },
     DownloadableCompatTool{
         name: "GE-Proton",
-        remote_path: "GloriousEggroll/proton"
+        remote_path: "GloriousEggroll/proton-ge-custom"
     }
 ];
 
