@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug,Serialize,Deserialize)]
+#[derive(Debug,Serialize,Deserialize,Clone)]
 pub struct SimplifiedGithubAsset {
     pub id: usize,
     pub name: String,
@@ -9,7 +9,7 @@ pub struct SimplifiedGithubAsset {
     pub created_at: String
 }
 
-#[derive(Debug,Serialize,Deserialize)]
+#[derive(Debug,Serialize,Deserialize,Clone)]
 pub struct SimplifiedGithubRelease {
     pub id: usize,
     pub name: String,

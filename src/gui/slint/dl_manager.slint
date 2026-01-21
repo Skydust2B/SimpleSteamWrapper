@@ -8,17 +8,31 @@ export component DlManagerGUI inherits Window {
     height: 500px;
     title: "Simple Steam Wrapper - Download Manager";
 
-    in property <bool> is_downloading;
+    in property <[string]> dl_compat_tools;
+    callback fetch_release(string);
+
+    in-out property <[{ parent: string, name: string, auto-update: bool }]> releases: [];
+    in property <{ is_downloading: bool, percent: int }> download_state: {
+        is_downloading: false,
+        percent: 0
+    };
+    callback install_compat_tool(string);
+
     VerticalBox {
         HorizontalBox {
-            ComboBox {
-                model: ["proton-cachyos", "GEProton"];
+            selected_list := ComboBox {
+                model: dl_compat_tools;
+                selected(current-value) => { fetch_release(selected_list.current-value); }
+            }
+            Button {
+                text: "🗘";
+                clicked => { fetch_release(selected_list.current-value); }
             }
         }
         ScrollView {
             VerticalBox {
                 alignment: LayoutAlignment.start;
-                Rectangle {
+                for row[idx] in releases: Rectangle {
                     border-color: darkgrey;
                     border-width: 1px;
                     border-radius: 3px;
@@ -28,7 +42,7 @@ export component DlManagerGUI inherits Window {
                             padding: 0;
                             Text {
                                 vertical-alignment: center;
-                                text: "proton-cachyos-latest";
+                                text: row.name;
                             }
                             VerticalLayout {
                                 horizontal-stretch: 0;
@@ -36,63 +50,31 @@ export component DlManagerGUI inherits Window {
                                 Button {
                                     max-width: self.preferred-width;
                                     text: "Install";
+                                    clicked => { install_compat_tool(row.name) }
+                                    enabled: !download_state.is-downloading;
                                 }
 
-                                CheckBox {
+                                if row.auto-update: CheckBox {
                                     horizontal-stretch: 0;
                                     text: "Auto-update";
                                 }
                             }
                         }
-                        if is_downloading: HorizontalBox {
+                        if download_state.is-downloading: HorizontalBox {
                            alignment: stretch;
 
                            VerticalLayout {
                                alignment: center;
                                ProgressIndicator {
                                    height: 2px;
-                                   progress: 80%;
+                                   progress: download_state.percent;
                                }
                            }
 
                            Text {
-                               text: "80%";
+                               text: download_state.percent + "%";
                            }
                        }
-                    }
-                }
-                Rectangle {
-                    border-color: darkgrey;
-                    border-width: 1px;
-                    border-radius: 3px;
-                    VerticalBox {
-                        alignment: LayoutAlignment.start;
-                        HorizontalLayout {
-                            padding: 0;
-                            Text {
-                                vertical-alignment: center;
-                                text: "proton-cachyos-18";
-                            }
-                            Button {
-                                max-width: self.preferred-width;
-                                text: "Install";
-                            }
-                        }
-                        HorizontalBox {
-                            alignment: stretch;
-
-                            VerticalLayout {
-                                alignment: center;
-                                ProgressIndicator {
-                                    height: 2px;
-                                    progress: 80%;
-                                }
-                            }
-
-                            Text {
-                                text: "80%";
-                            }
-                        }
                     }
                 }
             }
