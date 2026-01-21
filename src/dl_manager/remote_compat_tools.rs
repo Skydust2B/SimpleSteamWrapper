@@ -14,4 +14,3 @@ pub const DOWNLOADABLE_COMPAT_TOOLS: &[DownloadableCompatTool] = &[
         remote_path: "GloriousEggroll/proton-ge-custom"
     }
 ];
-

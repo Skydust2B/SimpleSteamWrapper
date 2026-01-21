@@ -2,19 +2,19 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug,Serialize,Deserialize)]
 pub struct SimplifiedGithubAsset {
-    id: usize,
-    name: String,
-    url: String,
-    content_type: String,
-    created_at: String
+    pub id: usize,
+    pub name: String,
+    pub browser_download_url: String,
+    pub(crate) content_type: String, // 	"application/x-xz"(.tar.xz) for cachyos and "application/zstd"/"application/gzip" (.tar.zst/.tar.gz)
+    pub created_at: String
 }
 
 #[derive(Debug,Serialize,Deserialize)]
 pub struct SimplifiedGithubRelease {
-    id: usize,
-    name: String,
-    published_at: String,
-    assets: Vec<SimplifiedGithubAsset>
+    pub id: usize,
+    pub name: String,
+    pub published_at: String,
+    pub(crate) assets: Vec<SimplifiedGithubAsset>
 }
 
 pub async fn fetch_github_releases(repo_path: &str) -> anyhow::Result<Vec<SimplifiedGithubRelease>> {
@@ -23,7 +23,7 @@ pub async fn fetch_github_releases(repo_path: &str) -> anyhow::Result<Vec<Simpli
         .header("Accept", "application/vnd.github+json")
         .header("X-GitHub-Api-Version", "2022-11-28")
         .header("User-Agent", "Mozilla/5.0")
-        .send().await;
+        .send().await?.error_for_status();
 
     if res.is_err() {
         return Err(anyhow::anyhow!("Failed to fetch github releases for {} {}", repo_path, res.err().unwrap().to_string()));
