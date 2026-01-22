@@ -6,7 +6,7 @@ use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
 use crate::config::config_loader::{get_steam_app_id, LOADED_CONFIG};
 use crate::{AppConf, MainGUI};
 use crate::compatibility_tools::compat_tool::{get_compat_tool_from_config};
-use crate::compatibility_tools::steam::list_steam_compat_tools;
+use crate::compatibility_tools::steam_compat_tools_list::SteamCompatToolsList;
 use crate::config::serialized_config_utils::{get_serialized_config_value, reset_serialized_opts_to_defaults, set_serialized_config_value, update_config_from_serialized};
 use crate::gpu_tools::gpu::{get_gpu_from_config, list_all_gpus};
 use crate::gui::dialog::show_message_dialog;
@@ -22,7 +22,7 @@ where
 }
 
 fn load_values_from_conf(window: &MainGUI, shared_config: Rc<RefCell<Value>>) {
-    let compat_tools = list_steam_compat_tools();
+    let compat_tools = SteamCompatToolsList::get_list();
     let compat_tools_names = compat_tools.iter().map(|ct| ct.name.clone().into()).collect::<Vec<SharedString>>();
     let model: ModelRc<SharedString> = Rc::new(VecModel::from(compat_tools_names)).into();
     window.set_compat_tools(model);

@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 use log::{warn};
-use crate::compatibility_tools::steam::list_steam_compat_tools;
+use crate::compatibility_tools::steam_compat_tools_list::SteamCompatToolsList;
 use crate::config::config_loader::LOADED_CONFIG;
 
 #[derive(Debug, Clone)]
@@ -25,7 +25,7 @@ impl CompatTool {
 
 pub fn get_compat_tool_from_config() -> CompatTool {
     let cfg = LOADED_CONFIG.get_app_options();
-    let all_ct = list_steam_compat_tools();
+    let all_ct = SteamCompatToolsList::get_list();
 
     if all_ct.len() == 0 {
         panic!("Unable to find a compatibility tool, use ProtonUpQt to download some.")

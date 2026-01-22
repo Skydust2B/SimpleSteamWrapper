@@ -17,6 +17,7 @@ export component DlManagerGUI inherits Window {
         percent: 0
     };
     callback install_compat_tool(string);
+    callback delete_compat_tool(string);
 
     VerticalBox {
         HorizontalBox {
@@ -53,6 +54,7 @@ export component DlManagerGUI inherits Window {
                                     if row.already_downloaded: Button {
                                         max-width: self.preferred-width;
                                         text: "🗑";
+                                        clicked => { delete_compat_tool(row.name) }
                                     }
                                     Button {
                                         max-width: self.preferred-width;

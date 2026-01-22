@@ -2,18 +2,19 @@ use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use log::info;
 use slint::{ComponentHandle, ModelRc, SharedString, VecModel, Weak};
-use crate::compatibility_tools::steam::list_steam_compat_tools;
+use tokio::fs;
+use crate::compatibility_tools::steam::get_steam_compat_tools_path;
+use crate::compatibility_tools::steam_compat_tools_list::SteamCompatToolsList;
 use crate::dl_manager::dl_manager::{download_and_extract_asset};
 use crate::dl_manager::github_api::{fetch_github_releases, SimplifiedGithubAsset};
 use crate::dl_manager::remote_compat_tools::{DownloadableCompatTool, DOWNLOADABLE_COMPAT_TOOLS};
-use crate::DlManagerGUI;
+use crate::{AppConf, DlManagerGUI, MainGUI};
 use crate::gui::gui_utils::InvokeFromEventLoop;
 use crate::io_utils::strip_all_extensions;
 
 fn release_model(auto_update: bool, parent: &str, name: &str) -> (bool, bool, SharedString, SharedString) {
-    let compat = list_steam_compat_tools();
+    let compat = SteamCompatToolsList::get_list();
     let already_downloaded = compat.iter().find(|ct| ct.name.as_str() == name).is_some();
-    info!("TODO: Change this check for a cached one");
 
     (already_downloaded, auto_update, SharedString::from(name), SharedString::from(parent))
 }
@@ -28,6 +29,30 @@ pub fn show_gui() {
     window.set_dl_compat_tools(model);
 
     let assets_release_list: Arc<Mutex<Vec<SimplifiedGithubAsset>>> = Arc::new(Mutex::new(Vec::new()));
+
+    let fetch_releases_async = |window: Weak<DlManagerGUI>, mutable_list: Arc<Mutex<Vec<SimplifiedGithubAsset>>>, compat_tool: &DownloadableCompatTool| {
+        let compat_tool_path = compat_tool.remote_path;
+        let compat_tool_name = compat_tool.name;
+        tokio::spawn(async move {
+            let rel = fetch_github_releases(compat_tool_path).await.unwrap();
+            let assets_from_rels = rel.iter().fold(Vec::new(), |acc, r| {
+                [acc, r.get_unique_assets()].concat()
+            });
+
+            let mut mutable_list = mutable_list.lock().unwrap();
+            *mutable_list = assets_from_rels.clone();
+
+            window.invoke(move |window| {
+                let model_base = assets_from_rels.iter().map(|v| {
+                    release_model(false, &compat_tool_name, strip_all_extensions(&v.name.clone()))
+                }).collect::<VecModel<(bool, bool, SharedString, SharedString)>>();
+
+                let model = Rc::new(VecModel::from(model_base));
+
+                window.set_releases(model.into());
+            })
+        });
+    };
 
     window.on_install_compat_tool({
         let weak_window = window.as_weak();
@@ -63,6 +88,7 @@ pub fn show_gui() {
                     });
 
                     let _ = download_and_extract_asset(&dc, progress_db).await.unwrap();
+                    SteamCompatToolsList::refresh_list();
 
                     // Update installed tools
                     weak_window.invoke(|window| {
@@ -72,30 +98,6 @@ pub fn show_gui() {
             }
         }
     });
-
-    let fetch_releases_async = |window: Weak<DlManagerGUI>, mutable_list: Arc<Mutex<Vec<SimplifiedGithubAsset>>>, compat_tool: &DownloadableCompatTool| {
-            let compat_tool_path = compat_tool.remote_path;
-            let compat_tool_name = compat_tool.name;
-            tokio::spawn(async move {
-                let rel = fetch_github_releases(compat_tool_path).await.unwrap();
-                let assets_from_rels = rel.iter().fold(Vec::new(), |acc, r| {
-                    [acc, r.get_unique_assets()].concat()
-                });
-
-                let mut mutable_list = mutable_list.lock().unwrap();
-                *mutable_list = assets_from_rels.clone();
-
-                window.invoke(move |window| {
-                    let model_base = assets_from_rels.iter().map(|v| {
-                        release_model(false, &compat_tool_name, strip_all_extensions(&v.name.clone()))
-                    }).collect::<VecModel<(bool, bool, SharedString, SharedString)>>();
-
-                    let model = Rc::new(VecModel::from(model_base));
-
-                    window.set_releases(model.into());
-                })
-            });
-        };
 
     window.on_fetch_release({
         let assets_release_list = assets_release_list.clone();
@@ -107,6 +109,17 @@ pub fn show_gui() {
             }
         }
     });
+    
+    window.on_delete_compat_tool(|v| {
+            if !v.is_empty() {
+                tokio::spawn(async move {
+                    let path = get_steam_compat_tools_path().join(v.as_str());
+                    info!("Deleting compat_tool at {}", path.display());
+                    let _ = fs::remove_dir_all(path).await;
+                    SteamCompatToolsList::refresh_list();
+                });
+            }
+        });
 
     fetch_releases_async(window.as_weak(), assets_release_list.clone(), &DOWNLOADABLE_COMPAT_TOOLS[0]);
 

@@ -1,6 +1,7 @@
 use std::{env, fs};
 use log::{info, warn};
-use crate::compatibility_tools::steam::{get_steam_compat_tools_path, list_steam_compat_tools};
+use crate::compatibility_tools::steam::{get_steam_compat_tools_path};
+use crate::compatibility_tools::steam_compat_tools_list::SteamCompatToolsList;
 use crate::install::install_modal::show_install_modal;
 
 const COMPATIBILITY_TOOL_VDF: &str = r#""compatibilitytools"
@@ -60,7 +61,7 @@ pub fn install_or_update() {
 }
 
 pub fn check_install() {
-    let steam_compat_tools = list_steam_compat_tools();
+    let steam_compat_tools = SteamCompatToolsList::get_list();
     if !steam_compat_tools.iter().any(|ct| ct.name == SIMPLE_STEAM_WRAPPER_NAME) {
         show_install_modal();
     }
