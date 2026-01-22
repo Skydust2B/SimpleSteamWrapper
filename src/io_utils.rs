@@ -27,3 +27,16 @@ pub async fn move_dir(src: &PathBuf, dst: &PathBuf) -> io::Result<()> {
         Err(e) => Err(e),
     }
 }
+
+pub fn strip_all_extensions(filename: &str) -> &str {
+    // First handle .tar.* specially
+    if let Some(pos) = filename.rfind(".tar.") {
+        return &filename[..pos];
+    }
+
+    // Otherwise, remove last extension
+    if let Some((base, _ext)) = filename.rsplit_once('.') {
+        return base
+    }
+    filename
+}

@@ -13,23 +13,14 @@ use crate::compatibility_tools::steam::get_steam_compat_tools_path;
 use crate::dl_manager::github_api::{SimplifiedGithubAsset, SimplifiedGithubRelease};
 use crate::io_utils::{move_dir, get_temp_folder};
 
-pub fn find_first_supported_archive(release: &SimplifiedGithubRelease) -> Option<&SimplifiedGithubAsset> {
-    release.assets.iter().find(|v| [
-        "application/x-xz",
-        "application/zstd",
-        "application/gzip"
-    ].contains(&v.content_type.as_str()))
-}
-
 type ProgressCallback = Arc<dyn Fn(u64, u64) + Send + Sync>;
 
 pub async fn download_and_extract_release_internal(
-    release: &SimplifiedGithubRelease,
+    asset: &SimplifiedGithubAsset,
     on_progress: ProgressCallback,
     temp_folder_path: &PathBuf
 ) -> anyhow::Result<()> {
-    let asset = find_first_supported_archive(release).ok_or(anyhow::anyhow!("No supported archive found"))?;
-    info!("Downloading release {:?}", release);
+    info!("Downloading asset {:?}", asset);
 
     info!("Creating temp folder {}", temp_folder_path.display());
     fs::create_dir_all(&temp_folder_path).await?;
@@ -77,14 +68,14 @@ pub async fn download_and_extract_release_internal(
     Ok(())
 }
 
-pub async fn download_and_extract_release(
-    release: &SimplifiedGithubRelease,
+pub async fn download_and_extract_asset(
+    asset: &SimplifiedGithubAsset,
     on_progress: ProgressCallback,
 ) -> anyhow::Result<()> {
     let temp_folder_path = get_temp_folder("ssw");
 
     fs::create_dir_all(&temp_folder_path).await?;
-    let result = download_and_extract_release_internal(release, on_progress, &temp_folder_path).await;
+    let result = download_and_extract_release_internal(asset, on_progress, &temp_folder_path).await;
     if result.is_err() {
         error!("{:?}", result.err().unwrap());
     }

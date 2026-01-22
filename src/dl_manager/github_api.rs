@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use crate::io_utils::strip_all_extensions;
 
 #[derive(Debug,Serialize,Deserialize,Clone)]
 pub struct SimplifiedGithubAsset {
@@ -16,6 +17,29 @@ pub struct SimplifiedGithubRelease {
     pub tag_name: String,
     pub published_at: String,
     pub(crate) assets: Vec<SimplifiedGithubAsset>
+}
+
+impl SimplifiedGithubAsset {
+    pub fn name_without_ext(&self) -> &str {
+        strip_all_extensions(&self.name)
+    }
+}
+
+impl SimplifiedGithubRelease {
+    pub fn get_unique_assets(&self) -> Vec<SimplifiedGithubAsset> {
+        // First find a supported archive type
+        let supported_archive = self.assets.iter().find(|v| [
+            "application/x-xz",
+            "application/zstd",
+            "application/gzip"
+        ].contains(&v.content_type.as_str())).expect("Couldn't find supported archive type");
+
+        // Then use this archive type to find unique assets
+        self.assets
+            .iter()
+            .filter(|a| a.content_type == supported_archive.content_type)
+            .map(|f| f.clone()).collect()
+    }
 }
 
 pub async fn fetch_github_releases(repo_path: &str) -> anyhow::Result<Vec<SimplifiedGithubRelease>> {
