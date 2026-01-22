@@ -5,6 +5,7 @@ use crate::dl_manager::dl_manager::download_and_extract_release;
 use crate::dl_manager::github_api::{fetch_github_releases, SimplifiedGithubRelease};
 use crate::dl_manager::remote_compat_tools::{DownloadableCompatTool, DOWNLOADABLE_COMPAT_TOOLS};
 use crate::DlManagerGUI;
+use crate::gui::gui_utils::InvokeFromEventLoop;
 
 pub fn show_gui() {
     let window = DlManagerGUI::new().unwrap();
@@ -16,21 +17,7 @@ pub fn show_gui() {
     window.set_dl_compat_tools(model);
 
     let release_list: Arc<Mutex<Vec<SimplifiedGithubRelease>>> = Arc::new(Mutex::new(Vec::new()));
-
-    window.set_releases(Default::default());
-
-    let invoke_window_from_event_loop = |
-        weak: Weak<DlManagerGUI>,
-        cb: fn(DlManagerGUI)
-    | {
-        let _ = slint::invoke_from_event_loop({
-        move || {
-          if let Some(window) = weak.upgrade() {
-              cb(window);
-          }
-        }});
-    };
-
+    
     window.on_install_compat_tool({
         let weak_window = window.as_weak();
         let cloned_list = release_list.clone();
@@ -46,7 +33,7 @@ pub fn show_gui() {
                 // Recheck if already there
                 let weak_window = env_window.as_weak();
                 tokio::spawn(async move {
-                    invoke_window_from_event_loop(weak_window.clone(), |window| {
+                    weak_window.invoke(|window| {
                         window.set_download_state((true, 0));
                     });
 
@@ -63,8 +50,7 @@ pub fn show_gui() {
                     let _ = download_and_extract_release(&dc, progress_db).await.unwrap();
 
                     // Update installed tools
-
-                    invoke_window_from_event_loop(weak_window.clone(), |window| {
+                    weak_window.invoke(|window| {
                         window.set_download_state((false, 0));
                     });
                 });
@@ -72,24 +58,37 @@ pub fn show_gui() {
         }
     });
 
-    let fetch_release_async = |mutable_list: Arc<Mutex<Vec<SimplifiedGithubRelease>>>, compat_tool: &DownloadableCompatTool| {
-            let compat_tool_path = compat_tool.remote_path.clone();
+    let fetch_releases_async = |window: Weak<DlManagerGUI>, mutable_list: Arc<Mutex<Vec<SimplifiedGithubRelease>>>, compat_tool: &DownloadableCompatTool| {
+            let compat_tool_path = compat_tool.remote_path;
             tokio::spawn(async move {
                 let rel = fetch_github_releases(compat_tool_path).await.unwrap();
                 let mut mutable_list = mutable_list.lock().unwrap();
-                *mutable_list = rel;
+                *mutable_list = rel.clone();
+
+                window.invoke(move |window| {
+                    let model_base = rel.iter().map(|v| {
+                        (false, SharedString::from(v.name.clone()), SharedString::from(v.name.clone()))
+                    }).collect::<VecModel<(bool, SharedString, SharedString)>>();
+
+                    let model = Rc::new(VecModel::from(model_base));
+
+                    window.set_releases(model.into());
+                })
             });
         };
 
     window.on_fetch_release({
         let release_list = release_list.clone();
+        let weak_window = window.as_weak();
         move |v| {
             let dct = DOWNLOADABLE_COMPAT_TOOLS.iter().find(|c| c.name == v.as_str());
             if let Some(dc) = dct {
-                fetch_release_async(release_list, dc)
+                fetch_releases_async(weak_window.clone(), release_list.clone(), dc)
             }
         }
     });
+
+    fetch_releases_async(window.as_weak(), release_list.clone(), &DOWNLOADABLE_COMPAT_TOOLS[0]);
 
     let _ = window.show();
 }

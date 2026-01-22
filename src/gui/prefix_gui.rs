@@ -9,6 +9,7 @@ use crate::compatibility_tools::compat_tool::{get_compat_tool_from_config};
 use crate::compatibility_tools::app_prefix::{AppPrefix};
 use crate::config::config_loader::{get_steam_app_id};
 use crate::gui::dialog::show_message_dialog;
+use crate::gui::gui_utils::InvokeFromEventLoop;
 use crate::PrefixSettingsGUI;
 
 pub fn show_gui() {
@@ -72,10 +73,9 @@ pub fn show_gui() {
                 } else {
                     show_message_dialog("Failed to recreated prefix");
                 }
-                slint::invoke_from_event_loop(move || {
-                    let upgraded_win = weak_window.upgrade().unwrap();
-                    upgraded_win.set_recreating_prefix(false);
-                })
+                weak_window.invoke(|window| {
+                    window.set_recreating_prefix(false);
+                });
             });
         }
     });
@@ -96,9 +96,8 @@ pub fn show_gui() {
                         show_message_dialog("Winetricks failed to run");
                     }
                 }
-                slint::invoke_from_event_loop(move || {
-                    let upgraded_win = weak_window.upgrade().unwrap();
-                    upgraded_win.set_running_winetricks(false);
+                weak_window.invoke(|window| {
+                    window.set_running_winetricks(false);
                 })
             });
         }
