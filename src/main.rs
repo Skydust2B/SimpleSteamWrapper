@@ -33,6 +33,10 @@ async fn main() {
     info!("RUST_LOG: {}", rust_log);
     load_config();
 
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("Failed to install rustls crypto provider");
+
     let is_in_steam_env = env::var("STEAM_COMPAT_APP_ID").and(Ok(true)).unwrap_or(false);
     if !is_in_steam_env {
         info!("Outside steam, running GUI");
