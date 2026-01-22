@@ -176,14 +176,9 @@ pub fn show_gui() {
 
             load_values_from_conf(&window_reload, shared_serialized_conf.clone());
 
-            let _ = slint::invoke_from_event_loop({
-                let nw = window_reload.as_weak();
-                move || {
-                    if let Some(w) = nw.upgrade() {
-                        w.set_reload(false);
-                        w.window().request_redraw();
-                    }
-                }
+            let _ = window_reload.as_weak().upgrade_in_event_loop(|window| {
+                window.set_reload(false);
+                window.window().request_redraw();
             });
         }
     });

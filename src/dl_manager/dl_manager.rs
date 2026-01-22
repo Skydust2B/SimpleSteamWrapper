@@ -10,7 +10,7 @@ use tokio::io::AsyncRead;
 use tokio_tar::Archive;
 use tokio_util::io::StreamReader;
 use crate::compatibility_tools::steam::get_steam_compat_tools_path;
-use crate::dl_manager::github_api::{SimplifiedGithubAsset, SimplifiedGithubRelease};
+use crate::dl_manager::github_api::{SimplifiedGithubAsset};
 use crate::io_utils::{move_dir, get_temp_folder};
 
 type ProgressCallback = Arc<dyn Fn(u64, u64) + Send + Sync>;

@@ -11,13 +11,14 @@ export component DlManagerGUI inherits Window {
     in property <[string]> dl_compat_tools;
     callback fetch_release(string);
 
-    in-out property <[{ parent: string, name: string, already_downloaded: bool, auto_update: bool }]> releases: [];
+    in-out property <[{ name: string, already_downloaded: bool, auto_update: bool }]> releases: [];
     in property <{ is_downloading: bool, download_name: string, percent: int }> download_state: {
         is_downloading: false,
         percent: 0
     };
     callback install_compat_tool(string);
     callback delete_compat_tool(string);
+    callback update_ui_releases();
 
     VerticalBox {
         HorizontalBox {
