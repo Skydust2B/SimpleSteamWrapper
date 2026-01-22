@@ -1,21 +1,17 @@
-use std::env::temp_dir;
-use std::future::Future;
 use std::io;
-use std::path::{Path, PathBuf};
-use std::pin::Pin;
+use std::path::{PathBuf};
 use std::sync::Arc;
 use autocompress::autodetect_async_buf_reader;
 use autocompress::xz::{AsyncXzDecompressReader};
-use fs_extra::dir::CopyOptions;
 use futures_util::TryStreamExt;
 use log::{error, info};
-use rand::distr::{Alphanumeric, SampleString};
 use tokio::fs;
 use tokio::io::AsyncRead;
 use tokio_tar::Archive;
 use tokio_util::io::StreamReader;
 use crate::compatibility_tools::steam::get_steam_compat_tools_path;
 use crate::dl_manager::github_api::{SimplifiedGithubAsset, SimplifiedGithubRelease};
+use crate::io_utils::{move_dir, get_temp_folder};
 
 pub fn find_first_supported_archive(release: &SimplifiedGithubRelease) -> Option<&SimplifiedGithubAsset> {
     release.assets.iter().find(|v| [
@@ -23,29 +19,6 @@ pub fn find_first_supported_archive(release: &SimplifiedGithubRelease) -> Option
         "application/zstd",
         "application/gzip"
     ].contains(&v.content_type.as_str()))
-}
-
-pub fn get_temp_folder(prefix: &str) -> PathBuf {
-    temp_dir().join(format!("{}-{}", prefix, Alphanumeric.sample_string(&mut rand::rng(), 8)))
-}
-
-async fn move_dir(src: &PathBuf, dst: &PathBuf) -> io::Result<()> {
-    match fs::rename(src, dst).await {
-        Ok(_) => Ok(()),
-        Err(e) if e.raw_os_error() == Some(libc::EXDEV) => {
-            fs::create_dir_all(dst).await?;
-            let _ = tokio::task::spawn_blocking({
-                let src = src.clone();
-                let dst = dst.clone();
-                move || {
-                    fs_extra::dir::copy(&src, &dst, &CopyOptions::new().content_only(true)).unwrap();
-                }
-            }).await?;
-            fs::remove_dir_all(src).await?;
-            Ok(())
-        }
-        Err(e) => Err(e),
-    }
 }
 
 type ProgressCallback = Arc<dyn Fn(u64, u64) + Send + Sync>;

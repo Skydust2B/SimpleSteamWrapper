@@ -10,6 +10,7 @@ mod gpu_tools;
 mod command_helpers;
 mod gui;
 mod dl_manager;
+mod io_utils;
 
 use std::{env};
 use tracing_subscriber::EnvFilter;
