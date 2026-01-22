@@ -11,8 +11,8 @@ export component DlManagerGUI inherits Window {
     in property <[string]> dl_compat_tools;
     callback fetch_release(string);
 
-    in-out property <[{ parent: string, name: string, auto-update: bool }]> releases: [];
-    in property <{ is_downloading: bool, percent: int }> download_state: {
+    in-out property <[{ parent: string, name: string, already_downloaded: bool, auto_update: bool }]> releases: [];
+    in property <{ is_downloading: bool, download_name: string, percent: int }> download_state: {
         is_downloading: false,
         percent: 0
     };
@@ -47,27 +47,34 @@ export component DlManagerGUI inherits Window {
                             VerticalLayout {
                                 horizontal-stretch: 0;
                                 spacing: 5px;
-                                Button {
-                                    max-width: self.preferred-width;
-                                    text: "Install";
-                                    clicked => { install_compat_tool(row.name) }
-                                    enabled: !download_state.is-downloading;
+                                HorizontalLayout {
+                                    horizontal-stretch: 0;
+                                    spacing: 5px;
+                                    if row.already_downloaded: Button {
+                                        max-width: self.preferred-width;
+                                        text: "🗑";
+                                    }
+                                    Button {
+                                        max-width: self.preferred-width;
+                                        text: "Install";
+                                        clicked => { install_compat_tool(row.name) }
+                                        enabled: (!download_state.is_downloading && !row.already_downloaded);
+                                    }
                                 }
-
-                                if row.auto-update: CheckBox {
+                                if row.auto_update: CheckBox {
                                     horizontal-stretch: 0;
                                     text: "Auto-update";
                                 }
                             }
                         }
-                        if download_state.is-downloading: HorizontalBox {
+                        if (download_state.is_downloading && row.name == download_state.download_name): HorizontalBox {
                            alignment: stretch;
 
                            VerticalLayout {
                                alignment: center;
                                ProgressIndicator {
                                    height: 2px;
-                                   progress: download_state.percent;
+                                   progress: download_state.percent/100;
                                }
                            }
 

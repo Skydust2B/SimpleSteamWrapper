@@ -13,6 +13,7 @@ pub struct SimplifiedGithubAsset {
 pub struct SimplifiedGithubRelease {
     pub id: usize,
     pub name: String,
+    pub tag_name: String,
     pub published_at: String,
     pub(crate) assets: Vec<SimplifiedGithubAsset>
 }

@@ -1,13 +1,10 @@
 use std::{env, fs};
-use std::cell::RefCell;
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use directories::ProjectDirs;
 use log::info;
 use once_cell::sync::Lazy;
 use serde_yaml::Value;
-use slint::SharedString;
 use crate::config::config::{Config, Options};
 
 #[derive(Clone)]

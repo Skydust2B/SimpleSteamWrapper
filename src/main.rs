@@ -26,7 +26,7 @@ slint::include_modules!();
 async fn main() {
     let rust_log = env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::new(format!("{},tracing=warn", rust_log)))
+        .with_env_filter(EnvFilter::new(format!("{},tracing=warn,h2=warn,winit=warn,reqwest=warn,sctk=warn,hyper_util=warn,rustls_platform_verifier=warn", rust_log)))
         .init();
 
     info!("RUST_LOG: {}", rust_log);
