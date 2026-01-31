@@ -6,6 +6,7 @@ use crate::compatibility_tools::steam::{get_steam_path, read_vdf};
 
 #[derive(Clone)]
 pub struct InstalledSteamApp {
+    #[allow (dead_code)]
     pub id: String,
     pub name: String,
     pub path: PathBuf

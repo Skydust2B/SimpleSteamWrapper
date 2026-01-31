@@ -18,6 +18,35 @@ fn release_model(can_be_updated: bool, display_name: &str, name: &str) -> (bool,
     (already_downloaded, can_be_updated, SharedString::from(display_name), SharedString::from(name))
 }
 
+fn fetch_releases_and_update_list_async(window: Weak<DlManagerGUI>, mutable_list: Arc<Mutex<Vec<DownloadableAsset>>>, compat_tool: &DownloadableCompatTool) {
+    let compat_tool_path = compat_tool.remote_path;
+    let compat_tool_name = compat_tool.name;
+    tokio::spawn(async move {
+        let rel = fetch_github_releases(compat_tool_path).await.unwrap();
+
+        let assets_from_rels = rel.iter().fold(Vec::new(), |acc, r| {
+            [acc, r.get_unique_assets()].concat()
+        });
+
+        let updatable_variant = {
+            let updatable_variant_tool = UpdatableCompatTool::from_tool_name(compat_tool_name, compat_tool_name).await;
+            let most_recent_rel = rel.first().unwrap().get_unique_assets();
+            let most_recent_asset = most_recent_rel.first().unwrap();
+
+            let mut converted = DownloadableAsset::from(most_recent_asset);
+            converted.custom_folder = Some(updatable_variant_tool.path);
+            converted.display_name = updatable_variant_tool.display_name;
+            converted
+        };
+        let mut as_downloadable_assets = assets_from_rels.iter().map(|f| DownloadableAsset::from(f)).collect::<Vec<DownloadableAsset>>();
+        as_downloadable_assets.insert(0, updatable_variant);
+
+        let mut mutable_list = mutable_list.lock().unwrap();
+        *mutable_list = as_downloadable_assets.clone();
+        let _ = window.upgrade_in_event_loop(|w| w.invoke_update_ui_releases());
+    });
+}
+
 pub fn show_gui() {
     let window = DlManagerGUI::new().unwrap();
 
@@ -46,35 +75,6 @@ pub fn show_gui() {
             });
         }
     });
-
-    let fetch_releases_async = |window: Weak<DlManagerGUI>, mutable_list: Arc<Mutex<Vec<DownloadableAsset>>>, compat_tool: &DownloadableCompatTool| {
-        let compat_tool_path = compat_tool.remote_path;
-        let compat_tool_name = compat_tool.name;
-        tokio::spawn(async move {
-            let rel = fetch_github_releases(compat_tool_path).await.unwrap();
-
-            let assets_from_rels = rel.iter().fold(Vec::new(), |acc, r| {
-                [acc, r.get_unique_assets()].concat()
-            });
-
-            let updatable_variant = {
-                let updatable_variant_tool = UpdatableCompatTool::from_tool_name(compat_tool_name, compat_tool_name).await;
-                let most_recent_rel = rel.first().unwrap().get_unique_assets();
-                let most_recent_asset = most_recent_rel.first().unwrap();
-
-                let mut converted = DownloadableAsset::from(most_recent_asset);
-                converted.custom_folder = Some(updatable_variant_tool.path);
-                converted.display_name = updatable_variant_tool.display_name;
-                converted
-            };
-            let mut as_downloadable_assets = assets_from_rels.iter().map(|f| DownloadableAsset::from(f)).collect::<Vec<DownloadableAsset>>();
-            as_downloadable_assets.insert(0, updatable_variant);
-
-            let mut mutable_list = mutable_list.lock().unwrap();
-            *mutable_list = as_downloadable_assets.clone();
-            let _ = window.upgrade_in_event_loop(|w| w.invoke_update_ui_releases());
-        });
-    };
 
     window.on_install_compat_tool({
         let weak_window = window.as_weak();
@@ -127,7 +127,7 @@ pub fn show_gui() {
         move |v| {
             let dct = DOWNLOADABLE_COMPAT_TOOLS.iter().find(|c| c.name == v.as_str());
             if let Some(dc) = dct {
-                fetch_releases_async(weak_window.clone(), assets_release_list.clone(), dc)
+                fetch_releases_and_update_list_async(weak_window.clone(), assets_release_list.clone(), dc)
             }
         }
     });
@@ -158,7 +158,7 @@ pub fn show_gui() {
         }
     });
 
-    fetch_releases_async(window.as_weak(), assets_release_list.clone(), &DOWNLOADABLE_COMPAT_TOOLS[0]);
+    fetch_releases_and_update_list_async(window.as_weak(), assets_release_list.clone(), &DOWNLOADABLE_COMPAT_TOOLS[0]);
 
     let _ = window.show();
 }

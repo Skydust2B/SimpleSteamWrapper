@@ -7,7 +7,6 @@ use crate::config::config_loader::LOADED_CONFIG;
 
 #[derive(Debug, Clone)]
 pub struct GPU {
-    pub name: String,
     pub full_name: String,
     pub vendor_id: u16,
     pub device_id: u16
@@ -61,7 +60,6 @@ pub fn list_all_gpus() -> Vec<GPU> {
                 valid_gpus.push(
                     GPU {
                         full_name: format!("{} {}", vendor.name(), gpu_name.to_string()),
-                        name: gpu_name,
                         vendor_id: vendor.id(),
                         device_id: device.id()
                     }
