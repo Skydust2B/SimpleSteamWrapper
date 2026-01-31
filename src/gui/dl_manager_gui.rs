@@ -5,17 +5,17 @@ use slint::{ComponentHandle, ModelRc, SharedString, VecModel, Weak};
 use tokio::fs;
 use crate::compatibility_tools::steam::get_steam_compat_tools_path;
 use crate::compatibility_tools::steam_compat_tools_list::SteamCompatToolsList;
-use crate::dl_manager::dl_manager::{download_and_extract_asset};
-use crate::dl_manager::github_api::{fetch_github_releases, SimplifiedGithubAsset};
+use crate::dl_manager::dl_manager::{download_and_extract_asset, DownloadableAsset};
+use crate::dl_manager::github_api::{fetch_github_releases};
 use crate::dl_manager::remote_compat_tools::{DownloadableCompatTool, DOWNLOADABLE_COMPAT_TOOLS};
 use crate::{DlManagerGUI};
-use crate::io_utils::strip_all_extensions;
+use crate::dl_manager::updatable_compat_tool::UpdatableCompatTool;
 
-fn release_model(auto_update: bool, name: &str) -> (bool, bool, SharedString) {
+fn release_model(can_be_updated: bool, display_name: &str, name: &str) -> (bool, bool, SharedString, SharedString) {
     let compat = SteamCompatToolsList::get_list();
     let already_downloaded = compat.iter().find(|ct| ct.name.as_str() == name).is_some();
 
-    (already_downloaded, auto_update, SharedString::from(name))
+    (already_downloaded, can_be_updated, SharedString::from(display_name), SharedString::from(name))
 }
 
 pub fn show_gui() {
@@ -27,7 +27,7 @@ pub fn show_gui() {
 
     window.set_dl_compat_tools(model);
 
-    let assets_release_list: Arc<Mutex<Vec<SimplifiedGithubAsset>>> = Arc::new(Mutex::new(Vec::new()));
+    let assets_release_list: Arc<Mutex<Vec<DownloadableAsset>>> = Arc::new(Mutex::new(Vec::new()));
 
     window.on_update_ui_releases({
         let weak_window = window.as_weak();
@@ -37,8 +37,8 @@ pub fn show_gui() {
             let _ = weak_window.upgrade_in_event_loop(move |window| {
                 let mutable_list = assets_release_list.lock().unwrap();
                 let model_base = mutable_list.iter().map(|v| {
-                    release_model(false, strip_all_extensions(&v.name.clone()))
-                }).collect::<VecModel<(bool, bool, SharedString)>>();
+                    release_model(v.custom_folder.is_some(), &v.display_name.clone(), &v.asset_name)
+                }).collect::<VecModel<(bool, bool, SharedString, SharedString)>>();
 
                 let model = Rc::new(VecModel::from(model_base));
 
@@ -47,24 +47,31 @@ pub fn show_gui() {
         }
     });
 
-    let fetch_releases_async = |window: Weak<DlManagerGUI>, mutable_list: Arc<Mutex<Vec<SimplifiedGithubAsset>>>, compat_tool: &DownloadableCompatTool| {
+    let fetch_releases_async = |window: Weak<DlManagerGUI>, mutable_list: Arc<Mutex<Vec<DownloadableAsset>>>, compat_tool: &DownloadableCompatTool| {
         let compat_tool_path = compat_tool.remote_path;
+        let compat_tool_name = compat_tool.name;
         tokio::spawn(async move {
             let rel = fetch_github_releases(compat_tool_path).await.unwrap();
 
-            let updatable_variant = SimplifiedGithubAsset {
-                id: 0,
-                name: "".to_string(),
-                browser_download_url: "".to_string(),
-                content_type: "".to_string(),
-                created_at: "".to_string(),
-            };
             let assets_from_rels = rel.iter().fold(Vec::new(), |acc, r| {
                 [acc, r.get_unique_assets()].concat()
             });
 
+            let updatable_variant = {
+                let updatable_variant_tool = UpdatableCompatTool::from_tool_name(compat_tool_name, compat_tool_name).await;
+                let most_recent_rel = rel.first().unwrap().get_unique_assets();
+                let most_recent_asset = most_recent_rel.first().unwrap();
+
+                let mut converted = DownloadableAsset::from(most_recent_asset);
+                converted.custom_folder = Some(updatable_variant_tool.path);
+                converted.display_name = updatable_variant_tool.display_name;
+                converted
+            };
+            let mut as_downloadable_assets = assets_from_rels.iter().map(|f| DownloadableAsset::from(f)).collect::<Vec<DownloadableAsset>>();
+            as_downloadable_assets.insert(0, updatable_variant);
+
             let mut mutable_list = mutable_list.lock().unwrap();
-            *mutable_list = assets_from_rels.clone();
+            *mutable_list = as_downloadable_assets.clone();
             let _ = window.upgrade_in_event_loop(|w| w.invoke_update_ui_releases());
         });
     };
@@ -72,12 +79,13 @@ pub fn show_gui() {
     window.on_install_compat_tool({
         let weak_window = window.as_weak();
         let cloned_list = assets_release_list.clone();
-        move |v| {
+        move |idx| {
             let env_window = weak_window.upgrade().unwrap();
             let cloned_list = cloned_list.lock().unwrap();
+
             let dct = cloned_list
                 .iter()
-                .find(|c| c.name_without_ext() == v.as_str())
+                .nth(idx as usize)
                 .cloned();
 
             if let Some(dc) = dct {
@@ -85,19 +93,17 @@ pub fn show_gui() {
                 let weak_window = env_window.as_weak();
                 tokio::spawn(async move {
                     let _ = weak_window.upgrade_in_event_loop({
-                        let name = SharedString::from(dc.name_without_ext());
                         move |window| {
-                            window.set_download_state((name.clone(), true, 0));
+                            window.set_download_state((true, 0, idx));
                         }
                     });
 
-                    let name = SharedString::from(dc.name_without_ext());
                     let progress_db = Arc::new({
                         let weak_window = weak_window.clone();
                         move |downloaded, total_size| {
                             if let Some(window) = weak_window.upgrade() {
                                 let percent = ((downloaded as f64 / total_size as f64) * 100.0).round() as i32;
-                                window.set_download_state((name.clone(), true, percent));
+                                window.set_download_state((true, percent, idx));
                             }
                         }
                     });
@@ -108,7 +114,7 @@ pub fn show_gui() {
                     SteamCompatToolsList::refresh_list();
                     let _ = weak_window.upgrade_in_event_loop(|window| {
                         window.invoke_update_ui_releases();
-                        window.set_download_state((SharedString::new(), false, 0));
+                        window.set_download_state((false, 0, 0));
                     });
                 });
             }
@@ -128,11 +134,18 @@ pub fn show_gui() {
 
     window.on_delete_compat_tool({
         let weak_window = window.as_weak();
-        move |v| {
+        let cloned_list = assets_release_list.clone();
+        move |idx| {
             let weak_window = weak_window.clone();
-            if !v.is_empty() {
+            let cloned_list = cloned_list.lock().unwrap();
+            let found_item = cloned_list
+                .iter()
+                .nth(idx as usize)
+                .cloned();
+
+            if let Some(found_item) = found_item {
                 tokio::spawn(async move {
-                    let path = get_steam_compat_tools_path().join(v.as_str());
+                    let path = found_item.custom_folder.unwrap_or(get_steam_compat_tools_path().join(found_item.asset_name));
                     info!("Deleting compat_tool at {}", path.display());
                     let _ = fs::remove_dir_all(path).await;
                     SteamCompatToolsList::refresh_list();

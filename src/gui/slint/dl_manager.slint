@@ -4,20 +4,20 @@ import { ComboBox, CheckBox, VerticalBox, HorizontalBox, SpinBox, Button, Scroll
 // TODO: On DLManager open, fetch corresponding GEProton and proton-cachyos versions
 // TODO: Versions that are already installed in steam need to simply be "Installed"
 export component DlManagerGUI inherits Window {
-    width: 400px;
+    width: 700px;
     height: 500px;
     title: "Simple Steam Wrapper - Download Manager";
 
     in property <[string]> dl_compat_tools;
     callback fetch_release(string);
 
-    in-out property <[{ name: string, already_downloaded: bool, auto_update: bool }]> releases: [];
-    in property <{ is_downloading: bool, download_name: string, percent: int }> download_state: {
+    in-out property <[{ already_downloaded: bool, can_be_updated: bool, display_name: string, name: string }]> releases: [];
+    in property <{ is_downloading: bool, row_id: int, percent: int }> download_state: {
         is_downloading: false,
         percent: 0
     };
-    callback install_compat_tool(string);
-    callback delete_compat_tool(string);
+    callback install_compat_tool(int);
+    callback delete_compat_tool(int);
     callback update_ui_releases();
 
     VerticalBox {
@@ -44,7 +44,7 @@ export component DlManagerGUI inherits Window {
                             padding: 0;
                             Text {
                                 vertical-alignment: center;
-                                text: row.name;
+                                text: row.display-name;
                             }
                             VerticalLayout {
                                 horizontal-stretch: 0;
@@ -55,22 +55,22 @@ export component DlManagerGUI inherits Window {
                                     if row.already_downloaded: Button {
                                         max-width: self.preferred-width;
                                         text: "🗑";
-                                        clicked => { delete_compat_tool(row.name) }
+                                        clicked => { delete_compat_tool(idx) }
                                     }
                                     Button {
                                         max-width: self.preferred-width;
                                         text: "Install";
-                                        clicked => { install_compat_tool(row.name) }
+                                        clicked => { install_compat_tool(idx) }
                                         enabled: (!download_state.is_downloading && !row.already_downloaded);
                                     }
                                 }
-                                if row.auto_update: CheckBox {
+                                if row.can_be_updated: CheckBox {
                                     horizontal-stretch: 0;
                                     text: "Auto-update";
                                 }
                             }
                         }
-                        if (download_state.is_downloading && row.name == download_state.download_name): HorizontalBox {
+                        if (download_state.is_downloading && idx == download_state.row-id): HorizontalBox {
                            alignment: stretch;
 
                            VerticalLayout {

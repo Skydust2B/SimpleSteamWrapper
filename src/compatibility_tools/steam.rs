@@ -130,3 +130,37 @@ pub fn list_steam_compat_tools() -> Vec<CompatTool> {
 
     results
 }
+
+pub fn create_compatibility_tool_vdf(compat_tool_name: &str, display_name: &str) -> String {
+    let mut string_builder = String::new();
+
+    string_builder.push_str(r#""compatibilitytools"
+{
+  "compat_tools"
+  {
+    ""#);
+    string_builder.push_str(compat_tool_name);
+    string_builder.push_str(r#"" // Internal name of this tool
+    {
+      // Can register this tool with Steam in two ways:
+      //
+      // - The tool can be placed as a subdirectory in compatibilitytools.d, in which case this
+      //   should be '.'
+      //
+      // - This manifest can be placed directly in compatibilitytools.d, in which case this should
+      //   be the relative or absolute path to the tool's dist directory.
+      "install_path" "."
+
+      // For this template, we're going to substitute the display_name key in here, e.g.:
+      "display_name" ""#);
+    string_builder.push_str(display_name);
+    string_builder.push_str(r#""
+
+      "from_oslist"  "windows"
+      "to_oslist"    "linux"
+    }
+  }
+}
+"#);
+    string_builder
+}

@@ -4,19 +4,19 @@ use std::sync::Arc;
 use autocompress::autodetect_async_buf_reader;
 use autocompress::xz::{AsyncXzDecompressReader};
 use futures_util::TryStreamExt;
-use log::{error, info};
+use log::{error, info, warn};
 use tokio::fs;
 use tokio::io::AsyncRead;
 use tokio_tar::Archive;
 use tokio_util::io::StreamReader;
-use crate::compatibility_tools::steam::get_steam_compat_tools_path;
+use crate::compatibility_tools::steam::{create_compatibility_tool_vdf, get_steam_compat_tools_path};
 use crate::dl_manager::github_api::{SimplifiedGithubAsset};
 use crate::io_utils::{move_dir, get_temp_folder};
 
 type ProgressCallback = Arc<dyn Fn(u64, u64) + Send + Sync>;
 
 pub async fn download_and_extract_release_internal(
-    asset: &SimplifiedGithubAsset,
+    asset: &DownloadableAsset,
     on_progress: ProgressCallback,
     temp_folder_path: &PathBuf
 ) -> anyhow::Result<()> {
@@ -61,15 +61,56 @@ pub async fn download_and_extract_release_internal(
     info!("Moving downloaded release to {}", compat.display());
     let mut files = fs::read_dir(temp_folder_path).await?;
 
-    while let Some(entry) = files.next_entry().await? {
-        info!("Moving {} to {}", entry.path().display(), compat.join(entry.file_name()).display());
-        move_dir(&entry.path(), &compat.join(entry.file_name())).await?;
+    if let Some(entry) = files.next_entry().await? {
+        let destination = if asset.custom_folder.is_some() {
+            compat.join(asset.custom_folder.clone().unwrap())
+        } else {
+            compat.join(entry.file_name())
+        };
+        info!("Moving {} to {}", entry.path().display(), destination.display());
+        if destination.exists() {
+            warn!("Destination exists, removing it...");
+            fs::remove_dir_all(&destination).await?
+        }
+        move_dir(&entry.path(), &destination).await?;
+        if asset.custom_folder.is_some()  {
+            info!("Custom destination, writing version file...");
+            fs::create_dir_all(destination.clone()).await?;
+            fs::write(destination.clone().join("version"), asset.asset_name.clone()).await?;
+            
+            info!("Replacing compatibilitytool.vdf...");
+            let dest_clone = destination.clone();
+            let name = dest_clone.file_name().clone().unwrap().to_str().unwrap();
+            let comp_vdf_file = create_compatibility_tool_vdf(name, name);
+            fs::write(destination.clone().join("compatibilitytool.vdf"), comp_vdf_file).await?;
+        }
     }
     Ok(())
 }
 
+#[derive(Debug, Clone)]
+pub struct DownloadableAsset {
+    pub display_name: String,
+    pub asset_name: String,
+    pub browser_download_url: String,
+    pub content_type: String,
+    pub custom_folder: Option<PathBuf>
+}
+
+impl From<&SimplifiedGithubAsset> for DownloadableAsset {
+    fn from(asset: &SimplifiedGithubAsset) -> Self {
+        Self {
+            asset_name: asset.name_without_ext().to_string(),
+            display_name: asset.name_without_ext().to_string(),
+            custom_folder: None,
+            browser_download_url: asset.browser_download_url.clone(),
+            content_type: asset.content_type.clone()
+        }
+    }
+}
+
 pub async fn download_and_extract_asset(
-    asset: &SimplifiedGithubAsset,
+    asset: &DownloadableAsset,
     on_progress: ProgressCallback,
 ) -> anyhow::Result<()> {
     let temp_folder_path = get_temp_folder("ssw");
