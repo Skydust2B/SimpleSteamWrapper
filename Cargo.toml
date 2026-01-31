@@ -8,7 +8,7 @@ tweaks_macro = { path = "tweaks_macro" }
 device_query = "4.0.1"
 vdf-reader = "0.3.3"
 log = "0.4.27"
-tracing-subscriber = { version = "0.3.22", default-features = false, features = ["fmt", "env-filter"] }
+tracing-subscriber = { version = "0.3.22", default-features = true, features = ["fmt", "env-filter"] }
 pci-info = { version = "0.3.4", default-features = false }
 pci-ids = "0.2.6"
 regex = "1.12.2"

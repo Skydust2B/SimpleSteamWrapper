@@ -51,6 +51,14 @@ pub fn show_gui() {
         let compat_tool_path = compat_tool.remote_path;
         tokio::spawn(async move {
             let rel = fetch_github_releases(compat_tool_path).await.unwrap();
+
+            let updatable_variant = SimplifiedGithubAsset {
+                id: 0,
+                name: "".to_string(),
+                browser_download_url: "".to_string(),
+                content_type: "".to_string(),
+                created_at: "".to_string(),
+            };
             let assets_from_rels = rel.iter().fold(Vec::new(), |acc, r| {
                 [acc, r.get_unique_assets()].concat()
             });

@@ -1,13 +1,13 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 use log::{debug};
-use serde_yaml::Value;
+use serde_yaml::{Mapping, Value};
 use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
 use crate::config::config_loader::{get_steam_app_id, LOADED_CONFIG};
 use crate::{AppConf, MainGUI};
 use crate::compatibility_tools::compat_tool::{get_compat_tool_from_config};
 use crate::compatibility_tools::steam_compat_tools_list::SteamCompatToolsList;
-use crate::config::serialized_config_utils::{get_serialized_config_value, reset_serialized_opts_to_defaults, set_serialized_config_value, update_config_from_serialized};
+use crate::config::serialized_config_utils::{SerializedConfig};
 use crate::gpu_tools::gpu::{get_gpu_from_config, list_all_gpus};
 use crate::gui::dialog::show_message_dialog;
 use crate::install::install::install_or_update;
@@ -21,7 +21,7 @@ where
         .and_then(|idx| i32::try_from(idx).ok())
 }
 
-fn load_values_from_conf(window: &MainGUI, shared_config: Rc<RefCell<Value>>) {
+fn load_values_from_conf(window: &MainGUI, shared_config: Rc<RefCell<SerializedConfig>>) {
     let compat_tools = SteamCompatToolsList::get_list();
     let compat_tools_names = compat_tools.iter().map(|ct| ct.name.clone().into()).collect::<Vec<SharedString>>();
     let model: ModelRc<SharedString> = Rc::new(VecModel::from(compat_tools_names)).into();
@@ -43,25 +43,18 @@ fn load_values_from_conf(window: &MainGUI, shared_config: Rc<RefCell<Value>>) {
     }).unwrap();
 
     // Workaround: https://github.com/slint-ui/slint/issues/7632
-    let _ = slint::invoke_from_event_loop({
-        let weak_window = window.as_weak();
-        move || {
-            if let Some(window) = weak_window.upgrade() {
-                window.set_selected_compat_tool_index(initial_compat_tool_index);
-                window.set_selected_gpu_index(initial_gpu_index);
-            }
-        }
+    let _ = window.as_weak().upgrade_in_event_loop(move |w| {
+        w.set_selected_compat_tool_index(initial_compat_tool_index);
+        w.set_selected_gpu_index(initial_gpu_index);
     });
 
+    let is_editing_default = window.get_editing_defaults();
     window.set_env_vars(
         Rc::new(VecModel::from({
             let shared_serialized_conf = Rc::clone(&shared_config);
             let borrowed_serialized_conf = shared_serialized_conf.borrow();
-            let steam_app_id = get_steam_app_id().unwrap_or("".to_string());
             borrowed_serialized_conf
-                .get("apps").unwrap().get(steam_app_id)
-                .unwrap_or_else(|| borrowed_serialized_conf.get("defaults").unwrap())
-                .get("custom_env_vars")
+                .get_app_value("custom_env_vars", is_editing_default)
                 .unwrap()
                 .as_mapping()
                 .unwrap()
@@ -75,29 +68,23 @@ fn load_values_from_conf(window: &MainGUI, shared_config: Rc<RefCell<Value>>) {
     );
 }
 
-fn save_custom_values_into_conf(window: &MainGUI, shared_config: Rc<RefCell<Value>>) {
+fn save_custom_values_into_conf(window: &MainGUI, shared_config: Rc<RefCell<SerializedConfig>>) {
     let is_editing_default = window.get_editing_defaults();
 
-    let shared_serialized_conf = Rc::clone(&shared_config);
-    let steam_app_id = get_steam_app_id().unwrap_or("".to_string());
-    let mut borrowed_serialized_conf = shared_serialized_conf.borrow_mut();
+    let new_opts =
+        window.get_env_vars()
+            .iter().fold(
+            Mapping::default(),
+            |mut acc, (key, val)|{
+            acc.insert(Value::from(key.to_string()), Value::from(val.to_string()));
+            acc
+        });
 
-    let mut app_opts = borrowed_serialized_conf
-        .get_mut("apps").unwrap().get_mut(steam_app_id);
-
-    if is_editing_default || app_opts.is_none() {
-        app_opts = borrowed_serialized_conf.get_mut("defaults");
-    }
-
-    let mapping_opts = app_opts.unwrap()
-        .get_mut("custom_env_vars").unwrap()
-        .as_mapping_mut().unwrap();
-
-    mapping_opts.clear();
-    window.get_env_vars().iter().for_each(|(key, val)|{
-        mapping_opts
-            .insert(Value::from(key.to_string()), Value::from(val.to_string()));
-    });
+    shared_config.borrow_mut().set_app_value(
+        "custom_env_vars",
+        new_opts.into(),
+        is_editing_default
+    )
 }
 
 pub fn show_gui() {
@@ -114,8 +101,8 @@ pub fn show_gui() {
         window.set_editing_defaults(true);
     }
 
-    let serialized_conf: Rc<RefCell<Value>> =
-        Rc::new(RefCell::new(serde_yaml::to_value(&LOADED_CONFIG.get_config()).unwrap()));
+    let serialized_conf: Rc<RefCell<SerializedConfig>> =
+        Rc::new(RefCell::new(SerializedConfig::from_global_config()));
 
     // Getter
     window.global::<AppConf>().on_get_opt({
@@ -123,8 +110,9 @@ pub fn show_gui() {
         let weak_window = window.as_weak();
         move |key| {
             let is_editing_defaults = weak_window.upgrade().unwrap().get_editing_defaults();
-            let get_conf = shared_serialized_conf.borrow();
-            get_serialized_config_value(&get_conf, &key, is_editing_defaults)
+            shared_serialized_conf
+                .borrow()
+                .get_app_value_as_string(&key, is_editing_defaults)
         }
     });
 
@@ -134,9 +122,9 @@ pub fn show_gui() {
         let weak_window = window.as_weak();
         move |key, val| {
             let is_editing_defaults = weak_window.upgrade().unwrap().get_editing_defaults();
-            let mut set_conf = shared_serialized_conf.borrow_mut();
-            debug!("set_opt: {:?} -> {:?} (default: {})", &key, &val, is_editing_defaults);
-            set_serialized_config_value(&mut set_conf, &key, &val, is_editing_defaults);
+            shared_serialized_conf
+                .borrow_mut()
+                .set_app_value_from_string(&key, &val, is_editing_defaults);
         }
     });
 
@@ -191,7 +179,7 @@ pub fn show_gui() {
     window.on_show_download_runner({
     let shared_serialized_conf = Rc::clone(&serialized_conf);
     move || {
-        update_config_from_serialized(&shared_serialized_conf);
+        shared_serialized_conf.borrow().update_global_config();
         crate::gui::dl_manager_gui::show_gui();
     }});
 
@@ -200,7 +188,9 @@ pub fn show_gui() {
         let weak_window = window.as_weak();
         move || {
             let window_default = weak_window.upgrade().unwrap();
-            reset_serialized_opts_to_defaults(&mut shared_serialized_conf.borrow_mut(), window_default.get_editing_defaults());
+            shared_serialized_conf
+                .borrow_mut()
+                .reset_serialized_opts_to_defaults(window_default.get_editing_defaults());
             window_default.invoke_force_reload();
         }
     });
@@ -212,21 +202,22 @@ pub fn show_gui() {
         move || {
             let window_save = weak_window.upgrade().unwrap();
             save_custom_values_into_conf(&window_save, shared_serialized_conf.clone());
-            update_config_from_serialized(&shared_serialized_conf);
+            shared_serialized_conf.borrow().update_global_config();
         }
     });
 
     window.on_show_prefix_options({
         let shared_serialized_conf = Rc::clone(&serialized_conf);
         move || {
-            update_config_from_serialized(&shared_serialized_conf);
+            shared_serialized_conf.borrow().update_global_config();
             crate::gui::prefix_gui::show_gui();
         }
     });
 
     let _ = window.run().unwrap();
+
     save_custom_values_into_conf(&window, serialized_conf.clone());
 
-    update_config_from_serialized(&serialized_conf);
+    serialized_conf.borrow().update_global_config();
     LOADED_CONFIG.save();
 }
