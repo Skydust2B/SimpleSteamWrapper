@@ -176,11 +176,14 @@ pub fn show_gui() {
     });
 
     window.on_show_download_runner({
-    let shared_serialized_conf = Rc::clone(&serialized_conf);
-    move || {
-        shared_serialized_conf.borrow().update_global_config();
-        crate::gui::dl_manager_gui::show_gui();
-    }});
+        let shared_serialized_conf = Rc::clone(&serialized_conf);
+        let weak_window = window.as_weak();
+        move || {
+            let weak_window = weak_window.clone();
+            shared_serialized_conf.borrow().update_global_config();
+            crate::gui::dl_manager_gui::show_gui(weak_window);
+        }
+    });
 
     window.on_reset_to_defaults({
         let shared_serialized_conf = Rc::clone(&serialized_conf);

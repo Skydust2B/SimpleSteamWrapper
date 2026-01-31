@@ -8,7 +8,7 @@ use crate::compatibility_tools::steam_compat_tools_list::SteamCompatToolsList;
 use crate::dl_manager::dl_manager::{download_and_extract_asset, DownloadableAsset};
 use crate::dl_manager::github_api::{fetch_github_releases};
 use crate::dl_manager::remote_compat_tools::{DownloadableCompatTool, DOWNLOADABLE_COMPAT_TOOLS};
-use crate::{DlManagerGUI};
+use crate::{DlManagerGUI, MainGUI};
 use crate::dl_manager::updatable_compat_tool::UpdatableCompatTool;
 
 fn release_model(can_be_updated: bool, display_name: &str, name: &str) -> (bool, bool, SharedString, SharedString) {
@@ -47,7 +47,7 @@ fn fetch_releases_and_update_list_async(window: Weak<DlManagerGUI>, mutable_list
     });
 }
 
-pub fn show_gui() {
+pub fn show_gui(main_gui: Weak<MainGUI>) {
     let window = DlManagerGUI::new().unwrap();
 
     let model: ModelRc<SharedString> = Rc::new(
@@ -61,8 +61,10 @@ pub fn show_gui() {
     window.on_update_ui_releases({
         let weak_window = window.as_weak();
         let assets_release_list = assets_release_list.clone();
+        let main_weak_window = main_gui.clone();
         move || {
             let assets_release_list = assets_release_list.clone();
+            let main_weak_window = main_weak_window.clone();
             let _ = weak_window.upgrade_in_event_loop(move |window| {
                 let mutable_list = assets_release_list.lock().unwrap();
                 let model_base = mutable_list.iter().map(|v| {
@@ -70,6 +72,10 @@ pub fn show_gui() {
                 }).collect::<VecModel<(bool, bool, SharedString, SharedString)>>();
 
                 let model = Rc::new(VecModel::from(model_base));
+
+                if let Some(main_window) = main_weak_window.upgrade() {
+                    main_window.invoke_force_reload();
+                }
 
                 window.set_releases(model.into());
             });
