@@ -35,7 +35,7 @@ impl SerializedConfig {
         }
     }
 
-    /// Traverse a `serde_yaml::Value` by a dotted key.
+    /// Traverse a `serde_yaml::Value` using a dotted key.
     pub fn get_value(&self, key: &str) -> Option<&Value> {
         key.split('.')
             .fold(Some(&self.serialized_config), |acc, part| acc.and_then(|v| v.get(part)))
@@ -46,7 +46,7 @@ impl SerializedConfig {
             .fold(Some(&mut self.serialized_config), |acc, part| acc.and_then(|v| v.get_mut(part)))
     }
 
-    /// Traverse a `serde_yaml::Value` by a dotted key and set it to a new value.
+    /// Traverse a `serde_yaml::Value` using a dotted key and set it to a new value.
     pub fn set_value(
         &mut self,
         key: &str,
@@ -132,7 +132,6 @@ impl SerializedConfig {
         self.set_value(&conf_path, val);
     }
 
-    /// Handles defaults vs per-app config.
     pub fn set_app_value_from_string(&mut self, key: &str, val: &str, is_editing_defaults: bool) {
         self.set_app_value(&key, parse_guess(val.to_string()), is_editing_defaults);
     }

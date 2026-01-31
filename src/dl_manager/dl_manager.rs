@@ -10,7 +10,7 @@ use tokio::io::AsyncRead;
 use tokio_tar::Archive;
 use tokio_util::io::StreamReader;
 use crate::compatibility_tools::steam::{create_compatibility_tool_vdf, get_steam_compat_tools_path};
-use crate::dl_manager::github_api::{SimplifiedGithubAsset};
+use crate::dl_manager::downloadable_asset::DownloadableAsset;
 use crate::io_utils::{move_dir, get_temp_folder};
 
 type ProgressCallback = Arc<dyn Fn(u64, u64) + Send + Sync>;
@@ -77,7 +77,7 @@ pub async fn download_and_extract_release_internal(
             info!("Custom destination, writing version file...");
             fs::create_dir_all(destination.clone()).await?;
             fs::write(destination.clone().join("version"), asset.asset_name.clone()).await?;
-            
+
             info!("Replacing compatibilitytool.vdf...");
             let dest_clone = destination.clone();
             let name = dest_clone.file_name().clone().unwrap().to_str().unwrap();
@@ -86,27 +86,6 @@ pub async fn download_and_extract_release_internal(
         }
     }
     Ok(())
-}
-
-#[derive(Debug, Clone)]
-pub struct DownloadableAsset {
-    pub display_name: String,
-    pub asset_name: String,
-    pub browser_download_url: String,
-    pub content_type: String,
-    pub custom_folder: Option<PathBuf>
-}
-
-impl From<&SimplifiedGithubAsset> for DownloadableAsset {
-    fn from(asset: &SimplifiedGithubAsset) -> Self {
-        Self {
-            asset_name: asset.name_without_ext().to_string(),
-            display_name: asset.name_without_ext().to_string(),
-            custom_folder: None,
-            browser_download_url: asset.browser_download_url.clone(),
-            content_type: asset.content_type.clone()
-        }
-    }
 }
 
 pub async fn download_and_extract_asset(

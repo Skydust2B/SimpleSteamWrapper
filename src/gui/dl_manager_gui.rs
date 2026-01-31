@@ -5,10 +5,11 @@ use slint::{ComponentHandle, ModelRc, SharedString, VecModel, Weak};
 use tokio::fs;
 use crate::compatibility_tools::steam::get_steam_compat_tools_path;
 use crate::compatibility_tools::steam_compat_tools_list::SteamCompatToolsList;
-use crate::dl_manager::dl_manager::{download_and_extract_asset, DownloadableAsset};
+use crate::dl_manager::dl_manager::{download_and_extract_asset};
 use crate::dl_manager::github_api::{fetch_github_releases};
 use crate::dl_manager::remote_compat_tools::{DownloadableCompatTool, DOWNLOADABLE_COMPAT_TOOLS};
 use crate::{DlManagerGUI, MainGUI};
+use crate::dl_manager::downloadable_asset::DownloadableAsset;
 use crate::dl_manager::updatable_compat_tool::UpdatableCompatTool;
 
 fn release_model(can_be_updated: bool, display_name: &str, name: &str) -> (bool, bool, SharedString, SharedString) {
