@@ -59,15 +59,15 @@ export component DlManagerGUI inherits Window {
                                     }
                                     Button {
                                         max-width: self.preferred-width;
-                                        text: "Install";
+                                        text: row.can_be_updated ? "Update" : "Install";
                                         clicked => { install_compat_tool(idx) }
                                         enabled: (!download_state.is_downloading && !row.already_downloaded);
                                     }
                                 }
-                                if row.can_be_updated: CheckBox {
-                                    horizontal-stretch: 0;
-                                    text: "Auto-update";
-                                }
+                                //if row.can_be_updated: CheckBox {
+                                //    horizontal-stretch: 0;
+                                //    text: "Auto-update";
+                                //}
                             }
                         }
                         if (download_state.is_downloading && idx == download_state.row-id): HorizontalBox {
