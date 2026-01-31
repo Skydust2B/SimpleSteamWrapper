@@ -1,4 +1,4 @@
-use log::{info, warn};
+use log::{warn};
 use pci_ids::{FromId, Vendor};
 use pci_info::PciInfo;
 use pci_info::pci_enums::PciDeviceClass;
@@ -26,7 +26,7 @@ pub fn get_gpu_from_config() -> GPU {
     if all_gpu.len() == 0 {
         panic!("Unable to find a GPU")
     }
-    
+
     let retrieved_gpu = all_gpu.iter().find(|gpu| gpu.as_formatted_id() == cfg.selected_gpu);
     if retrieved_gpu.is_none() {
         let found_gpu = all_gpu.first().unwrap().clone();

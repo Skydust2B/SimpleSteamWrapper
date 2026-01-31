@@ -1,6 +1,5 @@
 use std::cell::RefCell;
 use std::rc::Rc;
-use log::{debug};
 use serde_yaml::{Mapping, Value};
 use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
 use crate::config::config_loader::{get_steam_app_id, LOADED_CONFIG};
@@ -217,7 +216,6 @@ pub fn show_gui() {
     let _ = window.run().unwrap();
 
     save_custom_values_into_conf(&window, serialized_conf.clone());
-
     serialized_conf.borrow().update_global_config();
     LOADED_CONFIG.save();
 }

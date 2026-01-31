@@ -1,4 +1,3 @@
-use std::fmt::format;
 use log::debug;
 use serde_yaml::Value;
 use slint::SharedString;

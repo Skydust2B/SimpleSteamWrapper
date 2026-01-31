@@ -1,7 +1,9 @@
 use std::{env};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::str::FromStr;
 use log::info;
+use strum_macros::{Display, EnumString, VariantArray};
 use crate::command_helpers::to_quoted_string;
 use crate::compatibility_tools::app_prefix::AppPrefix;
 use crate::config::config::{Config};
@@ -10,16 +12,20 @@ use crate::compatibility_tools::compat_tool::{get_compat_tool_from_config};
 use crate::compatibility_tools::steam::{get_steam_sniper_runtime};
 use crate::tweak::{list_tweaks, Tweak};
 
-pub fn get_run_verb() -> Option<String> {
-    match env::args().nth(1) {
-        Some(arg) => {
-            if ["run", "waitforexitandrun"].contains(&arg.as_str()) {
-                return Some(arg.to_string());
-            }
-            None
-        },
-        None => None
+#[derive(Debug, EnumString, VariantArray, Clone, PartialEq, Display)]
+#[strum(serialize_all = "lowercase")]
+enum RunVerb {
+    Run,
+    Waitforexitandrun
+}
+
+fn get_run_verb() -> Option<RunVerb> {
+    if let Some(verb) = env::args().nth(1) {
+        if let Ok(parsed) = RunVerb::from_str(&verb) {
+            return Some(parsed);
+        }
     }
+    None
 }
 
 pub fn run_game_process() {
@@ -49,10 +55,7 @@ pub fn run_game_process() {
             }
         });
 
-        let steam_runtime = match get_steam_sniper_runtime() {
-            Some(installed_steam_runtime) => installed_steam_runtime,
-            None => panic!("No steam runtime found")
-        };
+        let steam_runtime = get_steam_sniper_runtime().expect("Couldn't find sniper runtime");
         let steam_runtime_run_path = PathBuf::from(steam_runtime.path).join("_v2-entry-point");
 
         AppPrefix::from_env(); // Used to validate proton env
@@ -60,10 +63,10 @@ pub fn run_game_process() {
         let compat_tool = get_compat_tool_from_config();
         let mut wrapper_prepared_command = String::new();
 
-        let run_verb = get_run_verb().unwrap_or("run".to_string());
+        let run_verb = get_run_verb().unwrap_or(RunVerb::Run);
         let passed_arguments = env::args().skip(2).collect::<Vec<String>>();
 
-        if run_verb == "waitforexitandrun" {
+        if run_verb == RunVerb::Waitforexitandrun {
             if prepared_command.len() > 0 {
                 wrapper_prepared_command = format!("{} ", to_quoted_string(prepared_command));
             }
@@ -72,9 +75,9 @@ pub fn run_game_process() {
         wrapper_prepared_command = format!("{}\"{}\" --verb={} -- \"{}\" {} {}",
             wrapper_prepared_command,
             steam_runtime_run_path.to_str().unwrap(),
-            run_verb,
+            run_verb.to_string(),
             compat_tool.path.to_string(),
-            run_verb,
+            run_verb.to_string(),
             to_quoted_string(passed_arguments));
 
         info!("Running command: {}", wrapper_prepared_command);
