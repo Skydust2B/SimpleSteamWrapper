@@ -1,3 +1,4 @@
+use std::fmt::format;
 use log::debug;
 use serde_yaml::Value;
 use slint::SharedString;
@@ -117,6 +118,18 @@ impl SerializedConfig {
         };
 
         debug!("set_opt: {:?} -> {:?} (is_editing_default: {})", &key, &val, is_editing_defaults);
+
+        // Enabled_tweaks is a partial map, that should probably change later
+        if key.contains("enabled_tweaks.") {
+            let last = key.split(".").last().unwrap();
+            let parent_key = conf_path.replace(&format!(".{}", last), "");
+            let mutable_value = self.get_mutable_value(&parent_key)
+                .expect(&format!("Missing base key enabled_tweaks for {}", &parent_key));
+
+            mutable_value.as_mapping_mut().unwrap()
+                .insert(Value::from(last), val);
+            return;
+        }
         self.set_value(&conf_path, val);
     }
 
