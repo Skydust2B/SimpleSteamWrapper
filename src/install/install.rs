@@ -11,7 +11,10 @@ const TOOL_MANIFEST_VDF: &str = r#""manifest"
 }
 "#;
 
-const SIMPLE_STEAM_WRAPPER_NAME: &str = "SimpleSteamWrapper";
+// We need to keep Proton in the string for steam cloud sync to work
+const SIMPLE_STEAM_WRAPPER_INTERNAL_NAME: &str = "Proton-SimpleSteamWrapper";
+
+pub const SIMPLE_STEAM_WRAPPER_NAME: &str = "SimpleSteamWrapper";
 
 pub fn install_or_update() {
     let simple_steam_wrapper_path = get_steam_compat_tools_path().join(SIMPLE_STEAM_WRAPPER_NAME);
@@ -29,8 +32,7 @@ pub fn install_or_update() {
     info!("Writing vfd files...");
     let compat_tool_vdf_path = simple_steam_wrapper_path.join("compatibilitytool.vdf");
 
-    // We need to keep Proton in the string for steam cloud sync to work
-    let compat_vdf_file = create_compatibility_tool_vdf("Proton-SimpleSteamWrapper", "SimpleSteamWrapper");
+    let compat_vdf_file = create_compatibility_tool_vdf(SIMPLE_STEAM_WRAPPER_INTERNAL_NAME, SIMPLE_STEAM_WRAPPER_NAME);
     fs::write(compat_tool_vdf_path, compat_vdf_file).expect("Unable to write compatibilitytool.vdf");
     let tool_manifest_vdf_path = simple_steam_wrapper_path.join("toolmanifest.vdf");
     fs::write(tool_manifest_vdf_path, TOOL_MANIFEST_VDF).expect("Unable to write toolmanifest.vdf");

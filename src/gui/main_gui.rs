@@ -9,7 +9,7 @@ use crate::compatibility_tools::steam_compat_tools_list::SteamCompatToolsList;
 use crate::config::serialized_config_utils::{SerializedConfig};
 use crate::gpu_tools::gpu::{get_gpu_from_config, list_all_gpus};
 use crate::gui::dialog::show_message_dialog;
-use crate::install::install::install_or_update;
+use crate::install::install::{install_or_update, SIMPLE_STEAM_WRAPPER_NAME};
 
 fn find_index<T, F>(items: &[T], predicate: F) -> Option<i32>
 where
@@ -22,14 +22,20 @@ where
 
 fn load_values_from_conf(window: &MainGUI, shared_config: Rc<RefCell<SerializedConfig>>) {
     let compat_tools = SteamCompatToolsList::get_list();
-    let compat_tools_names = compat_tools.iter().map(|ct| ct.name.clone().into()).collect::<Vec<SharedString>>();
+    let compat_tools_names = compat_tools.iter()
+        .filter(|ct| ct.name != SIMPLE_STEAM_WRAPPER_NAME)
+        .map(|ct| ct.name.clone().into()).collect::<Vec<SharedString>>();
+    
     let model: ModelRc<SharedString> = Rc::new(VecModel::from(compat_tools_names)).into();
     window.set_compat_tools(model);
 
-    let compat_tool_from_conf = get_compat_tool_from_config();
-    let initial_compat_tool_index = find_index(&compat_tools, |ct| {
-        ct.name == compat_tool_from_conf.name
-    }).unwrap();
+    let initial_compat_tool_index = if let Some(compat_tool_from_conf) = get_compat_tool_from_config() {
+        find_index(&compat_tools, |ct| {
+            ct.name == compat_tool_from_conf.name
+        }).unwrap()
+    } else {
+        0
+    };
 
     let gpus = list_all_gpus();
     let gpu_names = gpus.iter().map(|g| g.full_name.clone().into()).collect::<Vec<SharedString>>();

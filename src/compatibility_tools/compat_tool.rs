@@ -23,19 +23,17 @@ impl CompatTool {
     }
 }
 
-pub fn get_compat_tool_from_config() -> CompatTool {
+pub fn get_compat_tool_from_config() -> Option<CompatTool> {
     let cfg = LOADED_CONFIG.get_app_options();
     let all_ct = SteamCompatToolsList::get_list();
 
-    if all_ct.len() == 0 {
-        panic!("Unable to find a compatibility tool, use ProtonUpQt to download some.")
-    }
-
     let retrieved_ct = all_ct.iter().find(|ct| cfg.compat_tool == ct.name);
-    if retrieved_ct.is_none() {
-        let found_ct = all_ct.first().unwrap().clone();
-        warn!("Unable to find selected compatibility tool, using {}", found_ct.name);
-        return found_ct;
+    if cfg.compat_tool == "" {
+        return None;
     }
-    retrieved_ct.unwrap().clone()
+    if retrieved_ct.is_none() {
+        warn!("Unable to find selected compatibility tool {}", cfg.compat_tool);
+        return None;
+    }
+    Some(retrieved_ct.unwrap().clone())
 }

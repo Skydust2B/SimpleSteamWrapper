@@ -8,7 +8,7 @@ use crate::command_helpers::to_quoted_string;
 use crate::compatibility_tools::app_prefix::AppPrefix;
 use crate::config::config::{Config};
 use crate::config::config_loader::LOADED_CONFIG;
-use crate::compatibility_tools::compat_tool::{get_compat_tool_from_config};
+use crate::compatibility_tools::compat_tool::{CompatTool};
 use crate::compatibility_tools::steam::{get_steam_sniper_runtime};
 use crate::tweak::{list_tweaks, Tweak};
 
@@ -28,7 +28,7 @@ fn get_run_verb() -> Option<RunVerb> {
     None
 }
 
-pub fn run_game_process() {
+pub fn run_game_process(compat_tool: CompatTool) {
     if let Some(_) = env::args().nth(1) {
         let mut prepared_command: Vec<String> = Vec::new();
         
@@ -60,7 +60,6 @@ pub fn run_game_process() {
 
         AppPrefix::from_env(); // Used to validate proton env
 
-        let compat_tool = get_compat_tool_from_config();
         let mut wrapper_prepared_command = String::new();
 
         let run_verb = get_run_verb().unwrap_or(RunVerb::Run);

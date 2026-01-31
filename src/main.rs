@@ -16,7 +16,9 @@ use std::{env};
 use tracing_subscriber::EnvFilter;
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use log::info;
+use crate::compatibility_tools::compat_tool::get_compat_tool_from_config;
 use crate::config::config_loader::load_config;
+use crate::gui::dialog::show_message_dialog;
 use crate::gui::main_gui::show_gui;
 use crate::runner::game_process_wrapper::run_game_process;
 use crate::install::install::check_install;
@@ -50,5 +52,10 @@ async fn main() {
     if keys.contains(&Keycode::LShift) { // hold Shift to show GUI
         show_gui();
     }
-    run_game_process();
+
+    if let Some(cfg_compat_tool) = get_compat_tool_from_config() {
+        run_game_process(cfg_compat_tool);
+    } else {
+        show_message_dialog("No compatibility tools configured! This will exit");
+    }
 }

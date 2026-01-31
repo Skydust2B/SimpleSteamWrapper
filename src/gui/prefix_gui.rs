@@ -23,12 +23,19 @@ pub fn show_gui() {
         SharedString::from(prefix.as_path().to_str().unwrap_or(""))
     });
 
-    let compat_tool = get_compat_tool_from_config();
-    window.set_runner_name(SharedString::from(compat_tool.name));
+    if let Some(cfg_compat_tool) = get_compat_tool_from_config() {
+        window.set_runner_name(SharedString::from(cfg_compat_tool.name));
+    }
 
     window.on_run_in_prefix({
         let shared_pfx_ref = Arc::clone(&shared_pfx_ref);
         move |in_terminal, custom_cmd| {
+            let cfg_compat_tool = get_compat_tool_from_config();
+            if cfg_compat_tool.is_none() {
+                show_message_dialog("No compat tool selected.");
+                return;
+            }
+
             let new_command = if custom_cmd.is_empty() {
                 FileDialog::new()
                     .add_filter("Windows Executables", &["exe","msi","msix"])
@@ -48,7 +55,7 @@ pub fn show_gui() {
                     cmd_to_run.args(parsed_cmd.args);
 
                     let status = borrowed_pfx_ref.run_in_prefix(
-                        &get_compat_tool_from_config(),
+                        &cfg_compat_tool.unwrap(),
                         cmd_to_run,
                         in_terminal
                     ).await;
@@ -64,9 +71,16 @@ pub fn show_gui() {
         move || {
             let weak_window = weak_window.clone();
             let shared_pfx_ref = Arc::clone(&shared_pfx_ref);
+
+            let cfg_compat_tool = get_compat_tool_from_config();
+            if cfg_compat_tool.is_none() {
+                show_message_dialog("No compat tool selected.");
+                return;
+            }
+
             tokio::spawn(async move {
                 let borrowed_pfx_ref = shared_pfx_ref.lock().await;
-                let reset = borrowed_pfx_ref.reset_prefix(&get_compat_tool_from_config()).await;
+                let reset = borrowed_pfx_ref.reset_prefix(&cfg_compat_tool.unwrap()).await;
                 if reset.is_ok() {
                     show_message_dialog("Successfully recreated prefix");
                 } else {
@@ -85,12 +99,19 @@ pub fn show_gui() {
         move || {
             let weak_window = weak_window.clone();
             let shared_pfx_ref = Arc::clone(&shared_pfx_ref);
+
+            let cfg_compat_tool = get_compat_tool_from_config();
+            if cfg_compat_tool.is_none() {
+                show_message_dialog("No compat tool selected.");
+                return;
+            }
+
             tokio::spawn(async move {
                 if which("winetricks").is_err() {
                     show_message_dialog("Could not find winetricks in the system path.");
                 } else {
                     let borrowed_pfx_ref = shared_pfx_ref.lock().await;
-                    let run_winetricks = borrowed_pfx_ref.run_wiretricks(&get_compat_tool_from_config()).await;
+                    let run_winetricks = borrowed_pfx_ref.run_wiretricks(&cfg_compat_tool.unwrap()).await;
                     if run_winetricks.is_err() {
                         show_message_dialog("Winetricks failed to run");
                     }
