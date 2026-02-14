@@ -3,3 +3,4 @@ pub mod remote_compat_tools;
 pub mod dl_manager;
 pub mod updatable_compat_tool;
 pub mod downloadable_asset;
+mod client;

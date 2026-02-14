@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use crate::dl_manager::client::client;
 use crate::io_utils::strip_all_extensions;
 
 #[derive(Debug,Serialize,Deserialize,Clone)]
@@ -38,16 +39,18 @@ impl SimplifiedGithubRelease {
         self.assets
             .iter()
             .filter(|a| a.content_type == supported_archive.content_type)
+            .filter(|a| {
+                let is_cachyos = a.name.contains("proton-cachyos");
+                !is_cachyos || (is_cachyos && a.name.contains("x86_64"))
+            } )
             .map(|f| f.clone()).collect()
     }
 }
 
 pub async fn fetch_github_releases(repo_path: &str) -> anyhow::Result<Vec<SimplifiedGithubRelease>> {
-    let client = reqwest::Client::new();
-    let res = client.get(format!("https://api.github.com/repos/{}/releases", repo_path))
+    let res = client().get(format!("https://api.github.com/repos/{}/releases", repo_path))
         .header("Accept", "application/vnd.github+json")
         .header("X-GitHub-Api-Version", "2022-11-28")
-        .header("User-Agent", "Mozilla/5.0")
         .send().await?.error_for_status();
 
     if res.is_err() {
