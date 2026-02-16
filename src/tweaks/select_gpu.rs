@@ -1,15 +1,15 @@
 use std::process::Command;
 use log::{info};
 use tweaks_macro::tweak;
-use crate::gpu_tools::gpu::{get_gpu_from_config, GPU};
+use crate::gpu_tools::gpu::{GPU};
 use crate::gpu_tools::nvidia_gpu::get_nvidia_gpu_uuid;
 
 #[tweak(name = "gpu_tools", priority=0)]
 pub fn run(process: &mut Command, _: &mut Vec<String>) {
-    let gpu_to_set = &get_gpu_from_config();
+    let gpu_to_set = GPU::from_config();
     info!("Using selected GPU: {}", gpu_to_set.full_name);
 
-    process.envs(get_gpu_select_env_vars(gpu_to_set));
+    process.envs(get_gpu_select_env_vars(&gpu_to_set));
 }
 
 pub fn get_vulkan_gpu_env_vars(gpu: &GPU) -> Vec<(String,String)> {

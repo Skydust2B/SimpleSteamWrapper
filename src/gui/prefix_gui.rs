@@ -7,13 +7,13 @@ use which::which;
 use crate::command_helpers::parse_cmdline;
 use crate::compatibility_tools::compat_tool::{get_compat_tool_from_config};
 use crate::compatibility_tools::app_prefix::{AppPrefix};
-use crate::config::config_loader::{get_steam_app_id};
 use crate::gui::dialog::show_message_dialog;
 use crate::PrefixSettingsGUI;
+use crate::steam::steam::get_steam_env_app_id;
 
 pub fn show_gui() {
     let window = PrefixSettingsGUI::new().unwrap();
-    let steam_app_id = get_steam_app_id().unwrap_or("".to_string());
+    let steam_app_id = get_steam_env_app_id().unwrap_or("".to_string());
     window.set_game_app_id(SharedString::from(&steam_app_id));
 
     let shared_pfx_ref: Arc<Mutex<AppPrefix>> = Arc::new(Mutex::new(AppPrefix::from_env()));

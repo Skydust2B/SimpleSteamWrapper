@@ -1,10 +1,10 @@
-use std::fs;
+use std::{env, fs};
 use std::path::PathBuf;
 use std::string::ToString;
 use anyhow::Context;
 use vdf_reader::entry::{Entry, Table};
 use crate::compatibility_tools::compat_tool::{CompatTool};
-use crate::compatibility_tools::installed_steam_apps::{get_installed_steam_apps, InstalledSteamApp};
+use crate::steam::installed_steam_apps::{get_installed_steam_apps, InstalledSteamApp};
 
 const STEAM_VALID_COMPAT_APPIDS: [&str; 14] = [
     "2230260",
@@ -129,6 +129,10 @@ pub fn list_steam_compat_tools() -> Vec<CompatTool> {
     });
 
     results
+}
+
+pub fn get_steam_env_app_id() -> Result<String, env::VarError> {
+    env::var("STEAM_COMPAT_APP_ID")
 }
 
 pub fn create_compatibility_tool_vdf(compat_tool_name: &str, display_name: &str) -> String {

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
-use crate::compatibility_tools::steam::{get_steam_path, read_vdf};
+use crate::steam::steam::{get_steam_path, read_vdf};
 
 #[derive(Clone)]
 pub struct InstalledSteamApp {

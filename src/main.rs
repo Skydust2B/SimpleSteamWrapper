@@ -4,20 +4,21 @@ mod tweaks;
 mod config;
 mod runner;
 mod install;
-pub(crate) mod tweak;
+pub(crate) mod tweak_collector;
 mod compatibility_tools;
 mod gpu_tools;
 mod command_helpers;
 mod gui;
 mod dl_manager;
 mod io_utils;
+mod steam;
 
 use std::{env};
 use tracing_subscriber::EnvFilter;
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use log::info;
 use crate::compatibility_tools::compat_tool::get_compat_tool_from_config;
-use crate::config::config_loader::load_config;
+use crate::config::global_config::{GlobalConfig};
 use crate::gui::dialog::show_message_dialog;
 use crate::gui::main_gui::show_gui;
 use crate::runner::game_process_wrapper::run_game_process;
@@ -33,7 +34,7 @@ async fn main() {
         .init();
 
     info!("RUST_LOG: {}", rust_log);
-    load_config();
+    GlobalConfig::load();
 
     rustls::crypto::ring::default_provider()
         .install_default()

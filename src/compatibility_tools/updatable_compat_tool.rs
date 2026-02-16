@@ -1,12 +1,15 @@
 use std::path::PathBuf;
 use tokio::fs;
-use crate::compatibility_tools::steam::{get_steam_compat_tools_path, list_steam_compat_tools};
+use crate::compatibility_tools::compat_tools_list::CompatToolsList;
+use crate::steam::steam::get_steam_compat_tools_path;
 
 #[derive(Debug,Clone)]
 pub struct UpdatableCompatTool {
+    #[allow(dead_code)]
     pub name: String,
     pub display_name: String,
     pub path: PathBuf,
+    #[allow(dead_code)]
     pub local_version: Option<String>,
 }
 
@@ -20,8 +23,8 @@ async fn get_version_from_path(path: PathBuf) -> Option<String> {
 }
 
 impl UpdatableCompatTool {
-    pub async fn from_tool_name(name: &str, folder_prefix: &str) -> UpdatableCompatTool {
-        let compat_tools = list_steam_compat_tools();
+    pub async fn from_tool_name(folder_prefix: &str) -> UpdatableCompatTool {
+        let compat_tools = CompatToolsList::get();
         let tool_name = format!("{}-updatable", folder_prefix);
         let compat_tool = compat_tools.iter().find(|x| x.name == tool_name);
 
@@ -34,7 +37,7 @@ impl UpdatableCompatTool {
 
         UpdatableCompatTool {
             display_name: format!("{} ({})", tool_name, &version.clone().unwrap_or("None".to_string())),
-            name: format!("{}-updatable", name.to_string()),
+            name: tool_name,
             local_version: version,
             path: dir_path,
         }

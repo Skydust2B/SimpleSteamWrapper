@@ -1,8 +1,8 @@
 use std::{env, fs};
 use log::{info, warn};
-use crate::compatibility_tools::steam::{create_compatibility_tool_vdf, get_steam_compat_tools_path};
-use crate::compatibility_tools::steam_compat_tools_list::SteamCompatToolsList;
-use crate::install::install_modal::show_install_modal;
+use crate::compatibility_tools::compat_tools_list::{CompatToolsList};
+use crate::gui::install_modal_gui::show_install_modal;
+use crate::steam::steam::{create_compatibility_tool_vdf, get_steam_compat_tools_path};
 
 const TOOL_MANIFEST_VDF: &str = r#""manifest"
 {
@@ -41,7 +41,7 @@ pub fn install_or_update() {
 }
 
 pub fn check_install() {
-    let steam_compat_tools = SteamCompatToolsList::get_list();
+    let steam_compat_tools = CompatToolsList::get();
     if !steam_compat_tools.iter().any(|ct| ct.name == SIMPLE_STEAM_WRAPPER_NAME) {
         show_install_modal();
     }

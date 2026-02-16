@@ -60,7 +60,7 @@ pub fn tweak(attrs_orig: TokenStream, item: TokenStream) -> TokenStream {
         #input_fn
 
         inventory::submit! {
-            crate::tweak::Tweak {
+            crate::tweak_collector::Tweak {
                 name: #name,
                 priority: #priority,
                 execute: |ctx, msg| {

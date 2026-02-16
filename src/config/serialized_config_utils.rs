@@ -2,7 +2,8 @@ use log::debug;
 use serde_yaml::Value;
 use slint::SharedString;
 use crate::config::config::Config;
-use crate::config::config_loader::{get_steam_app_id, LOADED_CONFIG};
+use crate::config::global_config::{GlobalConfig};
+use crate::steam::steam::get_steam_env_app_id;
 
 pub struct SerializedConfig {
     serialized_config: Value
@@ -31,7 +32,7 @@ fn parse_guess(val: String) -> Value {
 impl SerializedConfig {
     pub fn from_global_config() -> Self {
         Self {
-            serialized_config: serde_yaml::to_value(&LOADED_CONFIG.get_config()).unwrap()
+            serialized_config: serde_yaml::to_value(&GlobalConfig::get()).unwrap()
         }
     }
 
@@ -60,7 +61,7 @@ impl SerializedConfig {
         let conf = &self.serialized_config;
         let updated_conf: Config = serde_yaml::from_value(conf.clone())
             .expect("Failed to deserialize config after update");
-        LOADED_CONFIG.set_config(updated_conf);
+        GlobalConfig::set(updated_conf);
     }
 
     fn app_conf_exists(&self, app_id: &str) -> bool {
@@ -72,7 +73,7 @@ impl SerializedConfig {
     }
 
     pub fn get_app_value(&self, key: &str, is_editing_defaults: bool) -> Option<&Value> {
-        let steam_app_id = get_steam_app_id();
+        let steam_app_id = get_steam_env_app_id();
 
         let conf_path = if !is_editing_defaults
             && steam_app_id.is_ok()
@@ -106,7 +107,7 @@ impl SerializedConfig {
 
     /// Handles defaults vs per-app config.
     pub fn set_app_value(&mut self, key: &str, val: Value, is_editing_defaults: bool) {
-        let steam_app_id = get_steam_app_id();
+        let steam_app_id = get_steam_env_app_id();
 
         let conf_path = if !is_editing_defaults && steam_app_id.is_ok() {
             let steam_app_id = steam_app_id.unwrap();
@@ -141,7 +142,7 @@ impl SerializedConfig {
         is_editing_defaults: bool
     ) {
         let mutable_serialized_conf = &mut self.serialized_config;
-        let steam_app_id = get_steam_app_id();
+        let steam_app_id = get_steam_env_app_id();
         if is_editing_defaults {
             let new_defaults: Value = serde_yaml::to_value(Config::new().defaults).unwrap();
             *mutable_serialized_conf.get_mut("defaults").unwrap() = new_defaults;

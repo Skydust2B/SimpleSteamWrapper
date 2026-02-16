@@ -1,3 +1,3 @@
 pub(crate) mod config;
-pub(crate) mod config_loader;
+pub(crate) mod global_config;
 pub mod serialized_config_utils;

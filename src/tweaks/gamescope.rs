@@ -1,7 +1,7 @@
 use std::process::Command;
 use serde::{Deserialize, Serialize};
 use tweaks_macro::tweak;
-use crate::config::config_loader::LOADED_CONFIG;
+use crate::config::global_config::{GlobalConfig};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GamescopeSettings {
@@ -17,7 +17,7 @@ pub struct GamescopeSettings {
 pub fn run(_: &mut Command, prepared_command: &mut Vec<String>) {
     let mut gamescope_cmd: Vec<String> = vec!["gamescope".to_string()];
 
-    let settings = LOADED_CONFIG.get_app_options().gamescope_settings;
+    let settings = GlobalConfig::get_app_options().gamescope_settings;
     if settings.fullscreen {
         gamescope_cmd.push("-f".to_string());
     }

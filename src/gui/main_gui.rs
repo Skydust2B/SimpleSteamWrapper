@@ -2,14 +2,16 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use serde_yaml::{Mapping, Value};
 use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
-use crate::config::config_loader::{get_steam_app_id, LOADED_CONFIG};
 use crate::{AppConf, MainGUI};
 use crate::compatibility_tools::compat_tool::{get_compat_tool_from_config};
-use crate::compatibility_tools::steam_compat_tools_list::SteamCompatToolsList;
+use crate::compatibility_tools::compat_tools_list::{CompatToolsList};
+use crate::config::global_config::GlobalConfig;
 use crate::config::serialized_config_utils::{SerializedConfig};
-use crate::gpu_tools::gpu::{get_gpu_from_config, list_all_gpus};
+use crate::gpu_tools::gpu::{GPU};
+use crate::gpu_tools::gpu_list::GPUList;
 use crate::gui::dialog::show_message_dialog;
 use crate::install::install::{install_or_update, SIMPLE_STEAM_WRAPPER_NAME};
+use crate::steam::steam::get_steam_env_app_id;
 
 fn find_index<T, F>(items: &[T], predicate: F) -> Option<i32>
 where
@@ -20,8 +22,9 @@ where
         .and_then(|idx| i32::try_from(idx).ok())
 }
 
-fn load_values_from_conf(window: &MainGUI, shared_config: Rc<RefCell<SerializedConfig>>) {
-    let compat_tools = SteamCompatToolsList::get_list();
+fn init_gui_with_conf(window: &MainGUI, shared_config: Rc<RefCell<SerializedConfig>>) {
+    // Compat tool list
+    let compat_tools = CompatToolsList::get();
     let compat_tools_names = compat_tools.iter()
         .filter(|ct| ct.name != SIMPLE_STEAM_WRAPPER_NAME)
         .map(|ct| ct.name.clone().into()).collect::<Vec<SharedString>>();
@@ -37,12 +40,13 @@ fn load_values_from_conf(window: &MainGUI, shared_config: Rc<RefCell<SerializedC
         0
     };
 
-    let gpus = list_all_gpus();
+    // GPU List
+    let gpus = GPUList::get();
     let gpu_names = gpus.iter().map(|g| g.full_name.clone().into()).collect::<Vec<SharedString>>();
     let model: ModelRc<SharedString> = Rc::new(VecModel::from(gpu_names)).into();
     window.set_gpus(model);
 
-    let gpu_from_conf = get_gpu_from_config();
+    let gpu_from_conf = GPU::from_config();
     let initial_gpu_index = find_index(&gpus, |g| {
         &gpu_from_conf.as_formatted_id() == &g.as_formatted_id()
     }).unwrap();
@@ -53,6 +57,7 @@ fn load_values_from_conf(window: &MainGUI, shared_config: Rc<RefCell<SerializedC
         w.set_selected_gpu_index(initial_gpu_index);
     });
 
+    // Env vars
     let is_editing_default = window.get_editing_defaults();
     window.set_env_vars(
         Rc::new(VecModel::from({
@@ -74,8 +79,8 @@ fn load_values_from_conf(window: &MainGUI, shared_config: Rc<RefCell<SerializedC
 }
 
 fn save_custom_values_into_conf(window: &MainGUI, shared_config: Rc<RefCell<SerializedConfig>>) {
+    // Env vars
     let is_editing_default = window.get_editing_defaults();
-
     let new_opts =
         window.get_env_vars()
             .iter().fold(
@@ -100,7 +105,7 @@ pub fn show_gui() {
     let version = env!("CARGO_PKG_VERSION");
     window.set_app_version(SharedString::from(version));
 
-    let steam_app_id = get_steam_app_id().unwrap_or("".to_string());
+    let steam_app_id = get_steam_env_app_id().unwrap_or("".to_string());
     window.set_game_app_id(SharedString::from(&steam_app_id));
     if steam_app_id.is_empty() {
         window.set_editing_defaults(true);
@@ -134,11 +139,11 @@ pub fn show_gui() {
     });
 
     window.on_get_combobox_gpu_id(|v| {
-        let gpus = list_all_gpus();
+        let gpus = GPUList::get();
         SharedString::from(gpus.get(v as usize).unwrap().as_formatted_id())
     });
 
-    load_values_from_conf(&window, serialized_conf.clone());
+    init_gui_with_conf(&window, serialized_conf.clone());
     window.on_add_env_var({
         let weak_window = window.as_weak();
         move || {
@@ -167,7 +172,7 @@ pub fn show_gui() {
             window_reload.set_reload(true);
             window_reload.window().request_redraw();
 
-            load_values_from_conf(&window_reload, shared_serialized_conf.clone());
+            init_gui_with_conf(&window_reload, shared_serialized_conf.clone());
 
             let _ = window_reload.as_weak().upgrade_in_event_loop(|window| {
                 window.set_reload(false);
@@ -226,5 +231,5 @@ pub fn show_gui() {
 
     save_custom_values_into_conf(&window, serialized_conf.clone());
     serialized_conf.borrow().update_global_config();
-    LOADED_CONFIG.save();
+    GlobalConfig::save();
 }

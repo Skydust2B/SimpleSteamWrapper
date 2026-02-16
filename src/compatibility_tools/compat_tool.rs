@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use log::{warn};
-use crate::compatibility_tools::steam_compat_tools_list::SteamCompatToolsList;
-use crate::config::config_loader::LOADED_CONFIG;
+use crate::compatibility_tools::compat_tools_list::{CompatToolsList};
+use crate::config::global_config::{GlobalConfig};
 
 #[derive(Debug, Clone)]
 pub struct CompatTool {
@@ -24,8 +24,8 @@ impl CompatTool {
 }
 
 pub fn get_compat_tool_from_config() -> Option<CompatTool> {
-    let cfg = LOADED_CONFIG.get_app_options();
-    let all_ct = SteamCompatToolsList::get_list();
+    let cfg = GlobalConfig::get_app_options();
+    let all_ct = CompatToolsList::get();
 
     let retrieved_ct = all_ct.iter().find(|ct| cfg.compat_tool == ct.name);
     if cfg.compat_tool == "" {

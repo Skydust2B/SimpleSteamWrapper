@@ -7,10 +7,10 @@ use strum_macros::{Display, EnumString, VariantArray};
 use crate::command_helpers::to_quoted_string;
 use crate::compatibility_tools::app_prefix::AppPrefix;
 use crate::config::config::{Config};
-use crate::config::config_loader::LOADED_CONFIG;
+use crate::config::global_config::{GlobalConfig};
 use crate::compatibility_tools::compat_tool::{CompatTool};
-use crate::compatibility_tools::steam::{get_steam_sniper_runtime};
-use crate::tweak::{list_tweaks, Tweak};
+use crate::steam::steam::get_steam_sniper_runtime;
+use crate::tweak_collector::{list_tweaks, Tweak};
 
 #[derive(Debug, EnumString, VariantArray, Clone, PartialEq, Display)]
 #[strum(serialize_all = "lowercase")]
@@ -43,7 +43,7 @@ pub fn run_game_process(compat_tool: CompatTool) {
         let mut iterator_tweaks = tweaks.iter().collect::<Vec<&&Tweak>>();
         iterator_tweaks.sort_by_key(|v| v.priority);
 
-        let config: Config = LOADED_CONFIG.get_config();
+        let config: Config = GlobalConfig::get();
 
         let steam_app_id = env::var("STEAM_COMPAT_APP_ID").expect("STEAM_COMPAT_APP_ID not set");
         let app_config = config.apps.get(&steam_app_id).unwrap_or(&config.defaults);

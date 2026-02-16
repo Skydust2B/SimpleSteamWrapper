@@ -9,9 +9,9 @@ use tokio::fs;
 use tokio::io::AsyncRead;
 use tokio_tar::Archive;
 use tokio_util::io::StreamReader;
-use crate::compatibility_tools::steam::{create_compatibility_tool_vdf, get_steam_compat_tools_path};
 use crate::dl_manager::downloadable_asset::DownloadableAsset;
 use crate::io_utils::{move_dir, get_temp_folder};
+use crate::steam::steam::{create_compatibility_tool_vdf, get_steam_compat_tools_path};
 
 type ProgressCallback = Arc<dyn Fn(u64, u64) + Send + Sync>;
 
