@@ -4,12 +4,13 @@ use log::info;
 use slint::{ComponentHandle, ModelRc, SharedString, VecModel, Weak};
 use tokio::fs;
 use crate::compatibility_tools::compat_tools_list::{CompatToolsList};
-use crate::dl_manager::dl_manager_install::{download_and_extract_asset};
+use crate::dl_manager::dl_manager_installer::{download_and_extract_asset};
 use crate::dl_manager::github_api::{fetch_github_releases};
 use crate::{DlManagerGUI, MainGUI};
 use crate::compatibility_tools::remote_compat_tools_provider::{RemoteCompatToolsProvider, REMOTE_COMPAT_TOOL_PROVIDERS};
 use crate::dl_manager::downloadable_asset::DownloadableAsset;
 use crate::compatibility_tools::updatable_compat_tool::UpdatableCompatTool;
+use crate::slint_utils::ClonableModel;
 use crate::steam::steam::get_steam_compat_tools_path;
 
 fn release_model(can_be_updated: bool, display_name: &str, name: &str) -> (bool, bool, SharedString, SharedString) {
@@ -48,14 +49,13 @@ fn fetch_releases_and_update_list_async(window: Weak<DlManagerGUI>, mutable_list
     });
 }
 
+
 pub fn show_gui(main_gui: Weak<MainGUI>) {
     let window = DlManagerGUI::new().unwrap();
 
-    let model: ModelRc<SharedString> = Rc::new(
-        VecModel::from(REMOTE_COMPAT_TOOL_PROVIDERS.iter().map(|dc| SharedString::from(dc.name)).collect::<Vec<SharedString>>())
-    ).into();
+    let providers_model = ClonableModel::new(REMOTE_COMPAT_TOOL_PROVIDERS.into());
 
-    window.set_dl_compat_tools(model);
+    window.set_provider_names(providers_model.to_model_rc(|e| e.name.to_string()));
 
     let assets_release_list: Arc<Mutex<Vec<DownloadableAsset>>> = Arc::new(Mutex::new(Vec::new()));
 
@@ -131,11 +131,9 @@ pub fn show_gui(main_gui: Weak<MainGUI>) {
     window.on_fetch_release({
         let assets_release_list = assets_release_list.clone();
         let weak_window = window.as_weak();
-        move |v| {
-            let dct = REMOTE_COMPAT_TOOL_PROVIDERS.iter().find(|c| c.name == v.as_str());
-            if let Some(dc) = dct {
-                fetch_releases_and_update_list_async(weak_window.clone(), assets_release_list.clone(), dc)
-            }
+        move |provider_idx, variant_idx| {
+            let provider = providers_model.get_from_idx(provider_idx);
+            fetch_releases_and_update_list_async(weak_window.clone(), assets_release_list.clone(), &provider)
         }
     });
 

@@ -8,8 +8,10 @@ export component DlManagerGUI inherits Window {
     height: 500px;
     title: "Simple Steam Wrapper - Download Manager";
 
-    in property <[string]> dl_compat_tools;
-    callback fetch_release(string);
+    in property <[string]> provider_names;
+    in property <[string]> variants;
+    in-out property <int> current-variant-idx;
+    callback fetch_release(provider_idx: int, variant_idx: int);
 
     in-out property <[{ already_downloaded: bool, can_be_updated: bool, display_name: string, name: string }]> releases: [];
     in property <{ is_downloading: bool, row_id: int, percent: int }> download_state: {
@@ -23,12 +25,17 @@ export component DlManagerGUI inherits Window {
     VerticalBox {
         HorizontalBox {
             selected_list := ComboBox {
-                model: dl_compat_tools;
-                selected(current-value) => { fetch_release(selected_list.current-value); }
+                model: provider_names;
+                selected(current-value) => { fetch_release(selected_list.current-index, current-variant-idx); }
+            }
+            if (variants.length > 0): variant := ComboBox {
+                model: variants;
+                current-index <=> current-variant-idx;
+                selected(current-value) => { fetch_release(selected_list.current-index, self.current-index); }
             }
             Button {
                 text: "🗘";
-                clicked => { fetch_release(selected_list.current-value); }
+                clicked => { fetch_release(selected_list.current-index, current-variant-idx); }
             }
         }
         ScrollView {
