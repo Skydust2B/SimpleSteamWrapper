@@ -45,7 +45,7 @@ pub fn get_nvidia_gpu_env_vars(gpu: &GPU) -> Vec<(String,String)> {
 
 pub fn get_gpu_select_env_vars(gpu: &GPU) -> Vec<(String, String)> {
     let mut env_vars = Vec::<(String, String)>::new();
-    if gpu.vendor_id == 0x10DE {
+    if gpu.is_nvidia() {
         env_vars = [env_vars, get_nvidia_gpu_env_vars(gpu)].concat();
     }
     env_vars = [env_vars, get_vulkan_gpu_env_vars(&gpu)].concat();

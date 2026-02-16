@@ -10,7 +10,10 @@ export component MainGUI inherits Window {
     in property <[string]> compat_tools;
 
     in-out property <int> selected_gpu_index;
+    in-out property <string> current_gpu_vendor;
     in property <[string]> gpus;
+    callback on_gpu_update();
+    pure callback get_combobox_gpu_id(int) -> string;
 
     in-out property <bool> editing_defaults;
 
@@ -20,18 +23,17 @@ export component MainGUI inherits Window {
     
     callback update_wrapper();
 
-    pure callback get_combobox_gpu_id(int) -> string;
-
     in property <string> game_app_id: "";
-
-    in property <bool> reload: false;
-    callback force_reload();
 
     callback remove_env_var(int);
     callback add_env_var();
     callback save_custom_values();
+
     callback run_in_prefix();
     callback show_prefix_options();
+
+    in property <bool> reload: false;
+    callback force_reload();
 
     in-out property <[{ key: string, value: string }]> env_vars: [];
 
@@ -55,20 +57,25 @@ export component MainGUI inherits Window {
                     }
                 }
 
-                select_gpu_check := CheckBox {
-                    text: "Select Vulkan GPU (Using multiple env vars)";
-                    checked: AppConf.get_opt_bool("enabled_tweaks.gpu_tools");
-                    toggled => { AppConf.set_opt_bool("enabled_tweaks.gpu_tools", self.checked); }
+                if root.gpus.length > 1: Rectangle {
+                    select_gpu_check := CheckBox {
+                        text: "Select GPU";
+                        checked: AppConf.get_opt_bool("enabled_tweaks.gpu_tools");
+                        toggled => { AppConf.set_opt_bool("enabled_tweaks.gpu_tools", self.checked); }
+                    }
+
+                    ComboBox {
+                        model: root.gpus;
+                        enabled: select_gpu_check.checked;
+                        current-index <=> selected_gpu_index;
+                        selected(current-value) => {
+                            AppConf.set_opt("selected_gpu", get_combobox_gpu_id(self.current-index));
+                            on_gpu_update();
+                        }
+                    }
                 }
 
-                ComboBox {
-                    model: root.gpus;
-                    enabled: select_gpu_check.checked;
-                    current-index <=> selected_gpu_index;
-                    selected(current-value) => { AppConf.set_opt("selected_gpu", get_combobox_gpu_id(self.current-index)); }
-                }
-
-                HorizontalLayout {
+                if current_gpu_vendor == "nvidia": HorizontalLayout {
                     nvapi := CheckBox {
                         text: "Use NVAPI extensions";
                         checked: AppConf.get_opt_bool("enabled_tweaks.proton_nvapi");

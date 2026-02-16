@@ -55,6 +55,7 @@ fn init_gui_with_conf(window: &MainGUI, shared_config: Rc<RefCell<SerializedConf
     let _ = window.as_weak().upgrade_in_event_loop(move |w| {
         w.set_selected_compat_tool_index(initial_compat_tool_index);
         w.set_selected_gpu_index(initial_gpu_index);
+        w.invoke_on_gpu_update();
     });
 
     // Env vars
@@ -141,6 +142,38 @@ pub fn show_gui() {
     window.on_get_combobox_gpu_id(|v| {
         let gpus = GPUList::get();
         SharedString::from(gpus.get(v as usize).unwrap().as_formatted_id())
+    });
+
+    window.on_on_gpu_update({
+        let weak_window = window.as_weak();
+        let shared_config = serialized_conf.clone();
+        move || {
+            let mut borrow_config = shared_config.borrow_mut();
+            borrow_config.update_global_config();
+            let gpu_from_conf = GPU::from_config();
+            let is_nvidia = gpu_from_conf.is_nvidia();
+
+            // Resetting nvidia vars
+            if let Some(w) = weak_window.upgrade() {
+                if !is_nvidia {
+                    let editing_defaults = w.get_editing_defaults();
+
+                    borrow_config.set_app_value("enabled_tweaks.proton_nvapi", Value::from(false), editing_defaults);
+                    borrow_config.set_app_value("enabled_tweaks.proton_nvapi_vkreflex", Value::from(false), editing_defaults);
+                }
+
+                // Lazy vendor_name for now
+                let vendor_name: &str = {
+                    if is_nvidia {
+                        "nvidia"
+                    } else {
+                        "others"
+                    }
+                };
+
+                w.set_current_gpu_vendor(SharedString::from(vendor_name));
+            }
+        }
     });
 
     init_gui_with_conf(&window, serialized_conf.clone());

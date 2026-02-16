@@ -14,6 +14,10 @@ impl GPU {
         format!("0x{:04x}:0x{:04x}", self.vendor_id, self.device_id)
     }
 
+    pub fn is_nvidia(&self) -> bool {
+        self.vendor_id == 0x10DE
+    }
+
     pub fn from_config() -> Self {
         let cfg = GlobalConfig::get_app_options();
         let all_gpu = GPUList::get();
