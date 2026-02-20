@@ -1,17 +1,16 @@
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use log::info;
-use slint::{ComponentHandle, ModelRc, SharedString, VecModel, Weak};
+use slint::{ComponentHandle, SharedString, VecModel, Weak};
 use tokio::fs;
 use crate::compatibility_tools::compat_tools_list::{CompatToolsList};
 use crate::dl_manager::dl_manager_installer::{download_and_extract_asset};
-use crate::dl_manager::github_api::{fetch_github_releases};
 use crate::{DlManagerGUI, MainGUI};
 use crate::compatibility_tools::remote_compat_tools_provider::{RemoteCompatToolsProvider, REMOTE_COMPAT_TOOL_PROVIDERS};
 use crate::dl_manager::downloadable_asset::DownloadableAsset;
 use crate::compatibility_tools::updatable_compat_tool::UpdatableCompatTool;
 use crate::slint_utils::ClonableModel;
-use crate::steam::steam::get_steam_compat_tools_path;
 
 fn release_model(can_be_updated: bool, display_name: &str, name: &str) -> (bool, bool, SharedString, SharedString) {
     let compat = CompatToolsList::get();
@@ -20,27 +19,27 @@ fn release_model(can_be_updated: bool, display_name: &str, name: &str) -> (bool,
     (already_downloaded, can_be_updated, SharedString::from(display_name), SharedString::from(name))
 }
 
-fn fetch_releases_and_update_list_async(window: Weak<DlManagerGUI>, mutable_list: Arc<Mutex<Vec<DownloadableAsset>>>, provider: &RemoteCompatToolsProvider) {
-    let compat_tool_path = provider.remote_path;
-    let compat_tool_name = provider.name;
+fn run_fetch_releases_update_list_task(
+    window: Weak<DlManagerGUI>,
+    mutable_list: Arc<Mutex<Vec<DownloadableAsset>>>,
+    provider: &RemoteCompatToolsProvider,
+    selected_variant: &String,
+    force_refresh: bool
+) {
+    let cloned_provider = provider.clone();
+    let cloned_variant = selected_variant.clone();
+
     tokio::spawn(async move {
-        let rel = fetch_github_releases(compat_tool_path).await.unwrap();
+        let mut rel = cloned_provider.fetch_assets_by_variant_name(force_refresh).await.unwrap();
 
-        let assets_from_rels = rel.iter().fold(Vec::new(), |acc, r| {
-            [acc, r.get_unique_assets()].concat()
-        });
-
+        let as_downloadable_assets = rel.get_mut(&cloned_variant.to_string()).expect("Variant not found.");
         let updatable_variant = {
-            let updatable_variant_tool = UpdatableCompatTool::from_tool_name(compat_tool_name).await;
-            let most_recent_rel = rel.first().unwrap().get_unique_assets();
-            let most_recent_asset = most_recent_rel.first().unwrap();
-
-            let mut converted = DownloadableAsset::from(most_recent_asset);
+            let updatable_variant_tool = UpdatableCompatTool::from_tool_name(cloned_provider.name).await;
+            let mut converted = as_downloadable_assets.first().unwrap().clone();
             converted.custom_folder = Some(updatable_variant_tool.path);
             converted.display_name = updatable_variant_tool.display_name;
             converted
         };
-        let mut as_downloadable_assets = assets_from_rels.iter().map(|f| DownloadableAsset::from(f)).collect::<Vec<DownloadableAsset>>();
         as_downloadable_assets.insert(0, updatable_variant);
 
         let mut mutable_list = mutable_list.lock().unwrap();
@@ -54,8 +53,10 @@ pub fn show_gui(main_gui: Weak<MainGUI>) {
     let window = DlManagerGUI::new().unwrap();
 
     let providers_model = ClonableModel::new(REMOTE_COMPAT_TOOL_PROVIDERS.into());
+    let variant_model: ClonableModel<String> = ClonableModel::new(providers_model.get_from_idx(0).variants.to_vec().iter().map(|e| e.to_string()).collect());
 
     window.set_provider_names(providers_model.to_model_rc(|e| e.name.to_string()));
+    window.set_variants(variant_model.to_model_rc(|variants| variants.clone()));
 
     let assets_release_list: Arc<Mutex<Vec<DownloadableAsset>>> = Arc::new(Mutex::new(Vec::new()));
 
@@ -131,9 +132,21 @@ pub fn show_gui(main_gui: Weak<MainGUI>) {
     window.on_fetch_release({
         let assets_release_list = assets_release_list.clone();
         let weak_window = window.as_weak();
-        move |provider_idx, variant_idx| {
+        let variant_model = variant_model.clone();
+        move |provider_idx, variant_idx, update_variants, force_refresh| {
             let provider = providers_model.get_from_idx(provider_idx);
-            fetch_releases_and_update_list_async(weak_window.clone(), assets_release_list.clone(), &provider)
+
+            if update_variants {
+                let new_variants = provider.variants.to_vec().iter().map(|e| e.to_string()).collect();
+                variant_model.set_model(new_variants);
+
+                if let Some(window) = weak_window.upgrade() {
+                    window.set_variants(variant_model.to_model_rc(|variants| variants.clone()));
+                }
+            }
+
+            let selected_variant = variant_model.get_from_idx(variant_idx);
+            run_fetch_releases_update_list_task(weak_window.clone(), assets_release_list.clone(), &provider, &selected_variant, force_refresh)
         }
     });
 
@@ -150,8 +163,16 @@ pub fn show_gui(main_gui: Weak<MainGUI>) {
 
             if let Some(found_item) = found_item {
                 tokio::spawn(async move {
-                    let path = found_item.custom_folder.unwrap_or(get_steam_compat_tools_path().join(found_item.asset_name));
-                    // TOdo: find in compat_tools_list to get path and remove properly
+                    let list = CompatToolsList::get();
+
+                    let compat_tool = list.iter().find(|compat| {
+                        if let Some(custom_folder) = &found_item.custom_folder {
+                            return compat.name == custom_folder.file_name().unwrap().to_str().unwrap()
+                        }
+                        return compat.name == found_item.asset_name;
+                    }).expect(&format!("Unable to find asset to remove for {:?}", &found_item));
+
+                    let path = PathBuf::from(compat_tool.dir_path.clone());
                     info!("Deleting compat_tool at {}", path.display());
                     let _ = fs::remove_dir_all(path).await;
                     CompatToolsList::refresh();
@@ -164,7 +185,7 @@ pub fn show_gui(main_gui: Weak<MainGUI>) {
         }
     });
 
-    fetch_releases_and_update_list_async(window.as_weak(), assets_release_list.clone(), &REMOTE_COMPAT_TOOL_PROVIDERS[0]);
+    run_fetch_releases_update_list_task(window.as_weak(), assets_release_list.clone(), &REMOTE_COMPAT_TOOL_PROVIDERS[0], &variant_model.get_from_idx(0), false);
 
     let _ = window.show();
 }
