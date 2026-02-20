@@ -1,0 +1,32 @@
+import { ComboBox, CheckBox, VerticalBox, HorizontalBox, SpinBox, Button, ScrollView, ListView, LineEdit } from "std-widgets.slint";
+import { AppConf } from "../app_conf.slint";
+
+export component EnvVarsEditor {
+    in-out property <[{ key: string, value: string }]> current_env_vars: [];
+    callback remove_env_var(int);
+    callback add_env_var();
+
+    Rectangle {
+         border-width: 1px;
+         border-radius: 10px;
+         border-color: darkgrey;
+         VerticalBox {
+            if (current_env_vars.length > 0):
+            ListView {
+                max-height: 250px;
+                for row[idx] in current_env_vars: HorizontalBox {
+                    LineEdit { text: row.key; edited => { row.key = self.text; } }
+                    LineEdit { text: row.value; edited => { row.value = self.text } }
+                    Button {
+                        text: "−";
+                        clicked => { remove_env_var(idx); }
+                    }
+                }
+            }
+            Button {
+                text: "+ Add Env Var";
+                clicked => { add_env_var(); }
+            }
+        }
+    }
+}

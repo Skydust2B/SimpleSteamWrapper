@@ -1,0 +1,87 @@
+import { ComboBox, CheckBox, VerticalBox, HorizontalBox, SpinBox, Button, ScrollView, ListView, LineEdit } from "std-widgets.slint";
+import { AppConf } from "../app_conf.slint";
+
+export component GamescopeEdit {
+    Rectangle {
+        border-width: 1px;
+        border-radius: 10px;
+        border-color: darkgrey;
+
+        VerticalBox {
+            spacing: 0;
+            HorizontalBox {
+                ComboBox {
+                    model: ["Fullscreen", "Windowed"];
+                    current-index: AppConf.get_opt_bool("gamescope_settings.fullscreen") ? 0 : 1;
+                    selected(current-value) => { AppConf.set_opt_bool("gamescope_settings.fullscreen", self.current-index == 0) }
+                }
+                CheckBox {
+                    text: "Force Grab Cursor";
+                    checked: AppConf.get_opt_bool("gamescope_settings.force_grab_cursor");
+                    toggled => { AppConf.set_opt_bool("gamescope_settings.force_grab_cursor", self.checked) }
+                }
+                CheckBox {
+                    text: "HDR";
+                    checked: AppConf.get_opt_bool("gamescope_settings.hdr");
+                    toggled => { AppConf.set_opt_bool("gamescope_settings.hdr", self.checked) }
+                }
+            }
+            HorizontalBox {
+                VerticalBox {
+                    property <int> forced_width: AppConf.get_opt_int("gamescope_settings.forced_width");
+
+                    w_checkbox := CheckBox {
+                        text: "Width";
+                        checked: forced_width > 0;
+                        toggled => {
+                            forced_width = (self.checked) ? 720 : -1;
+                            AppConf.set_opt_int("gamescope_settings.forced_width", (self.checked) ? 720 : -1);
+                        }
+                    }
+                    SpinBox {
+                        enabled: w_checkbox.checked;
+                        maximum: 9999;
+                        value: forced_width > -1 ? forced_width : 0;
+                        edited(value) => { AppConf.set_opt_int("gamescope_settings.forced_width", value) }
+                    }
+                }
+                VerticalBox {
+                    property <int> forced_height: AppConf.get_opt_int("gamescope_settings.forced_height");
+
+                    h_checkbox := CheckBox {
+                        text: "Height";
+                        checked: forced_height > 0;
+                        toggled => {
+                            forced_height = (self.checked) ? 720 : -1;
+                            AppConf.set_opt_int("gamescope_settings.forced_height", (self.checked) ? 720 : -1);
+                        }
+                    }
+                    SpinBox {
+                        enabled: h_checkbox.checked;
+                        maximum: 9999;
+                        value: forced_height > -1 ? forced_height : 0;
+                        edited(value) => { AppConf.set_opt_int("gamescope_settings.forced_height", value) }
+                    }
+                }
+                VerticalBox {
+                    property <int> framerate: AppConf.get_opt_int("gamescope_settings.framerate");
+
+                    framerate_check := CheckBox {
+                        text: "Framerate";
+                        checked: framerate > 0;
+                        toggled => {
+                            framerate = (self.checked) ? 60 : -1;
+                            AppConf.set_opt_int("gamescope_settings.framerate", (self.checked) ? 60 : -1);
+                        }
+                    }
+                    SpinBox {
+                        enabled: framerate_check.checked;
+                        maximum: 1000;
+                        value: framerate > -1 ? framerate : 0;
+                        edited(value) => { AppConf.set_opt_int("gamescope_settings.framerate", value) }
+                    }
+                }
+            }
+        }
+    }
+}

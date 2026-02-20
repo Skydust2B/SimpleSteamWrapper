@@ -1,5 +1,7 @@
 import { ComboBox, CheckBox, VerticalBox, HorizontalBox, SpinBox, Button, ScrollView, ListView, LineEdit } from "std-widgets.slint";
 import { AppConf } from "app_conf.slint";
+import { GamescopeEdit } from "widgets/gamescope_edit.slint";
+import { EnvVarsEditor } from "widgets/env_vars_editor.slint";
 
 export component MainGUI inherits Window {
     width: 500px;
@@ -15,27 +17,23 @@ export component MainGUI inherits Window {
     callback on_gpu_update();
     pure callback get_combobox_gpu_id(int) -> string;
 
-    in-out property <bool> editing_defaults;
-
-    pure callback show_download_runner();
-    in property <string> app_version;
-    callback reset_to_defaults();
-    
-    callback update_wrapper();
-
-    in property <string> game_app_id: "";
-
+    in-out property <[{ key: string, value: string }]> env_vars: [];
     callback remove_env_var(int);
     callback add_env_var();
     callback save_custom_values();
 
-    callback run_in_prefix();
-    callback show_prefix_options();
+    in property <string> game_app_id: "";
+    in-out property <bool> editing_defaults;
+
+    pure callback show_download_runner();
+    pure callback show_prefix_options();
+
+    in property <string> app_version;
+    callback reset_to_defaults();
+    callback update_wrapper();
 
     in property <bool> reload: false;
     callback force_reload();
-
-    in-out property <[{ key: string, value: string }]> env_vars: [];
 
     if(!reload): VerticalBox {
         ScrollView {
@@ -103,93 +101,14 @@ export component MainGUI inherits Window {
                     checked: AppConf.get_opt_bool("enabled_tweaks.proton_wayland");
                     toggled => { AppConf.set_opt_bool("enabled_tweaks.proton_wayland", self.checked); }
                 }
+
                 gamescope_check := CheckBox {
                     text: "Use Gamescope";
                     checked: AppConf.get_opt_bool("enabled_tweaks.gamescope");
                     toggled => { AppConf.set_opt_bool("enabled_tweaks.gamescope", self.checked); }
                 }
-                if gamescope_check.checked: Rectangle {
-                    border-width: 1px;
-                    border-radius: 10px;
-                    border-color: darkgrey;
 
-                    VerticalBox {
-                        spacing: 0;
-                        HorizontalBox {
-                            ComboBox {
-                                model: ["Fullscreen", "Windowed"];
-                                current-index: AppConf.get_opt_bool("gamescope_settings.fullscreen") ? 0 : 1;
-                                selected(current-value) => { AppConf.set_opt_bool("gamescope_settings.fullscreen", self.current-index == 0) }
-                            }
-                            CheckBox {
-                                text: "Force Grab Cursor";
-                                checked: AppConf.get_opt_bool("gamescope_settings.force_grab_cursor");
-                                toggled => { AppConf.set_opt_bool("gamescope_settings.force_grab_cursor", self.checked) }
-                            }
-                            CheckBox {
-                                text: "HDR";
-                                checked: AppConf.get_opt_bool("gamescope_settings.hdr");
-                                toggled => { AppConf.set_opt_bool("gamescope_settings.hdr", self.checked) }
-                            }
-                        }
-                        HorizontalBox {
-                            VerticalBox {
-                                property <int> forced_width: AppConf.get_opt_int("gamescope_settings.forced_width");
-
-                                w_checkbox := CheckBox {
-                                    text: "Width";
-                                    checked: forced_width > 0;
-                                    toggled => {
-                                        forced_width = (self.checked) ? 720 : -1;
-                                        AppConf.set_opt_int("gamescope_settings.forced_width", (self.checked) ? 720 : -1);
-                                    }
-                                }
-                                SpinBox {
-                                    enabled: w_checkbox.checked;
-                                    maximum: 9999;
-                                    value: forced_width > -1 ? forced_width : 0;
-                                    edited(value) => { AppConf.set_opt_int("gamescope_settings.forced_width", value) }
-                                }
-                            }
-                            VerticalBox {
-                                property <int> forced_height: AppConf.get_opt_int("gamescope_settings.forced_height");
-
-                                h_checkbox := CheckBox {
-                                    text: "Height";
-                                    checked: forced_height > 0;
-                                    toggled => {
-                                        forced_height = (self.checked) ? 720 : -1;
-                                        AppConf.set_opt_int("gamescope_settings.forced_height", (self.checked) ? 720 : -1);
-                                    }
-                                }
-                                SpinBox {
-                                    enabled: h_checkbox.checked;
-                                    maximum: 9999;
-                                    value: forced_height > -1 ? forced_height : 0;
-                                    edited(value) => { AppConf.set_opt_int("gamescope_settings.forced_height", value) }
-                                }
-                            }
-                            VerticalBox {
-                                property <int> framerate: AppConf.get_opt_int("gamescope_settings.framerate");
-
-                                framerate_check := CheckBox {
-                                    text: "Framerate";
-                                    checked: framerate > 0;
-                                    toggled => {
-                                        framerate = (self.checked) ? 60 : -1;
-                                        AppConf.set_opt_int("gamescope_settings.framerate", (self.checked) ? 60 : -1);
-                                    }
-                                }
-                                SpinBox {
-                                    enabled: framerate_check.checked;
-                                    maximum: 1000;
-                                    value: framerate > -1 ? framerate : 0;
-                                    edited(value) => { AppConf.set_opt_int("gamescope_settings.framerate", value) }
-                                }
-                            }
-                        }
-                    }
-                }
+                if gamescope_check.checked: GamescopeEdit {}
 
                 CheckBox {
                     text: "Use MangoHUD";
@@ -202,6 +121,7 @@ export component MainGUI inherits Window {
                     checked: AppConf.get_opt_bool("enabled_tweaks.dxvk_hud_mode");
                     toggled => { AppConf.set_opt_bool("enabled_tweaks.dxvk_hud_mode", self.checked); }
                 }
+
                 if(dxvk_hud_mode.checked): ComboBox {
                     model: ["compiler","devinfo","fps","full","memory","gpuload","drawcalls","frametimes"];
                     current-value: AppConf.get_opt("dxvk_hud_settings.mode");
@@ -214,28 +134,10 @@ export component MainGUI inherits Window {
                     toggled => { AppConf.set_opt_bool("enabled_tweaks.custom_env_vars", self.checked); }
                 }
 
-                if(custom_env_vars.checked): Rectangle {
-                     border-width: 1px;
-                     border-radius: 10px;
-                     border-color: darkgrey;
-                     VerticalBox {
-                        if (env_vars.length > 0):
-                        ListView {
-                            max-height: 250px;
-                            for row[idx] in env_vars: HorizontalBox {
-                                LineEdit { text: row.key; edited => { row.key = self.text; } }
-                                LineEdit { text: row.value; edited => { row.value = self.text } }
-                                Button {
-                                    text: "−";
-                                    clicked => { remove_env_var(idx); }
-                                }
-                            }
-                        }
-                        Button {
-                            text: "+ Add Env Var";
-                            clicked => { add_env_var(); }
-                        }
-                    }
+                if(custom_env_vars.checked): EnvVarsEditor {
+                    current_env_vars <=> env_vars;
+                    remove_env_var(idx) => { remove_env_var(idx) }
+                    add_env_var => { add_env_var() }
                 }
             }
         }
