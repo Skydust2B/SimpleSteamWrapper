@@ -1,9 +1,11 @@
 import { InstallerWindow } from "install_modal.slint";
-import { AppConf } from "app_conf.slint";
+import { AppConf } from "globals/app_conf.slint";
 import { MainGUI } from "main_gui.slint";
 import { PrefixSettingsGUI } from "prefix_settings_gui.slint";
 import { SimpleDialog } from "simple_dialog.slint";
 import { DlManagerGUI } from "dl_manager.slint";
+import { HardRefresh } from "globals/hard_refresh.slint";
+import { EnvVarsSettings } from "globals/env_vars_settings.slint";
 
 export {
     InstallerWindow,
@@ -11,5 +13,7 @@ export {
     AppConf,
     PrefixSettingsGUI,
     SimpleDialog,
-    DlManagerGUI
+    DlManagerGUI,
+    HardRefresh,
+    EnvVarsSettings
 }

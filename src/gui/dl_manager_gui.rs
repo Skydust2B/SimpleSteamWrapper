@@ -2,21 +2,27 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use log::info;
-use slint::{ComponentHandle, SharedString, VecModel, Weak};
+use slint::{ComponentHandle, VecModel, Weak};
 use tokio::fs;
 use crate::compatibility_tools::compat_tools_list::{CompatToolsList};
 use crate::dl_manager::dl_manager_installer::{download_and_extract_asset};
-use crate::{DlManagerGUI, MainGUI};
+use crate::{DlManagerGUI, DownloadState, MainGUI, Release};
 use crate::compatibility_tools::remote_compat_tools_provider::{RemoteCompatToolsProvider, REMOTE_COMPAT_TOOL_PROVIDERS};
 use crate::dl_manager::downloadable_asset::DownloadableAsset;
 use crate::compatibility_tools::updatable_compat_tool::UpdatableCompatTool;
-use crate::slint_utils::ClonableModel;
+use crate::gui::globals::init_hard_refresh::{WindowForceRefresh};
+use crate::slint_utils::{ClonableModel, WeakUtils};
 
-fn release_model(can_be_updated: bool, display_name: &str, name: &str) -> (bool, bool, SharedString, SharedString) {
+fn release_model(can_be_updated: bool, display_name: &str, name: &str) -> Release {
     let compat = CompatToolsList::get();
     let already_downloaded = compat.iter().find(|ct| ct.name.as_str() == name).is_some();
 
-    (already_downloaded, can_be_updated, SharedString::from(display_name), SharedString::from(name))
+    Release {
+        already_downloaded,
+        can_be_updated,
+        display_name: display_name.into(),
+        name: name.into()
+    }
 }
 
 fn run_fetch_releases_update_list_task(
@@ -67,17 +73,15 @@ pub fn show_gui(main_gui: Weak<MainGUI>) {
         move || {
             let assets_release_list = assets_release_list.clone();
             let main_weak_window = main_weak_window.clone();
-            let _ = weak_window.upgrade_in_event_loop(move |window| {
+            weak_window.upgrade_and_run(move |window| {
                 let mutable_list = assets_release_list.lock().unwrap();
                 let model_base = mutable_list.iter().map(|v| {
                     release_model(v.custom_folder.is_some(), &v.display_name.clone(), &v.asset_name)
-                }).collect::<VecModel<(bool, bool, SharedString, SharedString)>>();
+                }).collect::<VecModel<Release>>();
 
-                let model = Rc::new(VecModel::from(model_base));
+                let model = Rc::new(model_base);
 
-                if let Some(main_window) = main_weak_window.upgrade() {
-                    main_window.invoke_force_reload();
-                }
+                main_weak_window.upgrade_and_run(|w| w.force_refresh());
 
                 window.set_releases(model.into());
             });
@@ -102,7 +106,11 @@ pub fn show_gui(main_gui: Weak<MainGUI>) {
                 tokio::spawn(async move {
                     let _ = weak_window.upgrade_in_event_loop({
                         move |window| {
-                            window.set_download_state((true, 0, idx));
+                            window.set_download_state(DownloadState{
+                                is_downloading: true,
+                                percent: 0,
+                                row_id: idx
+                            });
                         }
                     });
 
@@ -111,7 +119,11 @@ pub fn show_gui(main_gui: Weak<MainGUI>) {
                         move |downloaded, total_size| {
                             if let Some(window) = weak_window.upgrade() {
                                 let percent = ((downloaded as f64 / total_size as f64) * 100.0).round() as i32;
-                                window.set_download_state((true, percent, idx));
+                                window.set_download_state(DownloadState{
+                                    is_downloading: true,
+                                    percent,
+                                    row_id: idx
+                                });
                             }
                         }
                     });
@@ -122,7 +134,11 @@ pub fn show_gui(main_gui: Weak<MainGUI>) {
                     CompatToolsList::refresh();
                     let _ = weak_window.upgrade_in_event_loop(|window| {
                         window.invoke_update_ui_releases();
-                        window.set_download_state((false, 0, 0));
+                        window.set_download_state(DownloadState{
+                            is_downloading: false,
+                            percent: 0,
+                            row_id: 0
+                        });
                     });
                 });
             }

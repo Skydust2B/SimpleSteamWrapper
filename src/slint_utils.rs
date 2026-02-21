@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use std::rc::Rc;
-use slint::{ModelRc, SharedString, VecModel};
+use slint::{ComponentHandle, ModelRc, SharedString, VecModel, Weak};
 
 #[derive(Clone)]
 pub struct ClonableModel<T> {
@@ -20,15 +20,30 @@ impl<T: Clone> ClonableModel<T> {
     where F: Fn(&T) -> String {
         let elements = self.elements.borrow();
         Rc::new(
-            VecModel::from(
             elements
                 .iter()
                 .map(|dc| SharedString::from(mapping_fn(dc)))
-            .collect::<Vec<SharedString>>())).into()
+            .collect::<VecModel<SharedString>>()).into()
     }
 
     pub fn get_from_idx(&self, index: i32) -> T {
         let elements = self.elements.borrow();
         elements[index as usize].clone()
+    }
+}
+
+pub trait WeakUtils<T> {
+    fn upgrade_and_run<F>(&self, run: F)
+    where F: FnOnce(T);
+}
+impl<T> WeakUtils<T> for Weak<T>where
+    T: ComponentHandle {
+    fn upgrade_and_run<F>(&self, run: F)
+    where
+        F: FnOnce(T)
+    {
+        if let Some(window) = self.upgrade() {
+            run(window);
+        }
     }
 }

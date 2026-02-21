@@ -14,17 +14,17 @@ use crate::steam::steam::get_steam_env_app_id;
 pub fn show_gui() {
     let window = PrefixSettingsGUI::new().unwrap();
     let steam_app_id = get_steam_env_app_id().unwrap_or("".to_string());
-    window.set_game_app_id(SharedString::from(&steam_app_id));
+    window.set_game_app_id(steam_app_id.into());
 
     let shared_pfx_ref: Arc<Mutex<AppPrefix>> = Arc::new(Mutex::new(AppPrefix::from_env()));
 
     window.set_prefix_path({
         let prefix = AppPrefix::from_env();
-        SharedString::from(prefix.as_path().to_str().unwrap_or(""))
+        prefix.as_path().to_str().unwrap_or("").into()
     });
 
     if let Some(cfg_compat_tool) = get_compat_tool_from_config() {
-        window.set_runner_name(SharedString::from(cfg_compat_tool.name));
+        window.set_runner_name(cfg_compat_tool.name.into());
     }
 
     window.on_run_in_prefix({
@@ -46,7 +46,7 @@ pub fn show_gui() {
             };
 
             if let Some(cmd) = new_command {
-                let shared_pfx_ref = Arc::clone(&shared_pfx_ref);
+                let shared_pfx_ref = shared_pfx_ref.clone();
                 let parsed_cmd = parse_cmdline(cmd.as_str());
                 tokio::spawn(async move {
                     let borrowed_pfx_ref = shared_pfx_ref.lock().await;
@@ -67,10 +67,10 @@ pub fn show_gui() {
 
     window.on_recreate_prefix({
         let weak_window = window.as_weak();
-        let shared_pfx_ref = Arc::clone(&shared_pfx_ref);
+        let shared_pfx_ref = shared_pfx_ref.clone();
         move || {
             let weak_window = weak_window.clone();
-            let shared_pfx_ref = Arc::clone(&shared_pfx_ref);
+            let shared_pfx_ref = shared_pfx_ref.clone();
 
             let cfg_compat_tool = get_compat_tool_from_config();
             if cfg_compat_tool.is_none() {
@@ -95,10 +95,10 @@ pub fn show_gui() {
 
     window.on_run_winetricks({
         let weak_window = window.as_weak().clone();
-        let shared_pfx_ref = Arc::clone(&shared_pfx_ref);
+        let shared_pfx_ref = shared_pfx_ref.clone();
         move || {
             let weak_window = weak_window.clone();
-            let shared_pfx_ref = Arc::clone(&shared_pfx_ref);
+            let shared_pfx_ref = shared_pfx_ref.clone();
 
             let cfg_compat_tool = get_compat_tool_from_config();
             if cfg_compat_tool.is_none() {

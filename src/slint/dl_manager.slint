@@ -2,7 +2,20 @@ import { ComboBox, CheckBox, VerticalBox, HorizontalBox, SpinBox, Button, Scroll
 
 // TODO: If auto-update on, check corresponding update on startup and add a 'last-update' to not spam the check
 // TODO: On DLManager open, fetch corresponding GEProton and proton-cachyos versions
-// TODO: Versions that are already installed in steam need to simply be "Installed"
+
+struct Release {
+    already_downloaded: bool,
+    can_be_updated: bool,
+    display_name: string,
+    name: string
+}
+
+struct DownloadState {
+    is_downloading: bool,
+    row_id: int,
+    percent: int
+}
+
 export component DlManagerGUI inherits Window {
     width: 700px;
     height: 500px;
@@ -13,8 +26,8 @@ export component DlManagerGUI inherits Window {
     out property <int> current-variant-idx;
     callback fetch_release(provider_idx: int, variant_idx: int, update_variants: bool, force_refresh: bool);
 
-    in-out property <[{ already_downloaded: bool, can_be_updated: bool, display_name: string, name: string }]> releases: [];
-    in property <{ is_downloading: bool, row_id: int, percent: int }> download_state: {
+    in-out property <[Release]> releases: [];
+    in property <DownloadState> download_state: {
         is_downloading: false,
         percent: 0
     };

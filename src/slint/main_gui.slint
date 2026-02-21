@@ -1,7 +1,14 @@
 import { ComboBox, CheckBox, VerticalBox, HorizontalBox, SpinBox, Button, ScrollView, ListView, LineEdit } from "std-widgets.slint";
-import { AppConf } from "app_conf.slint";
+import { AppConf } from "globals/app_conf.slint";
 import { GamescopeEdit } from "widgets/gamescope_edit.slint";
 import { EnvVarsEditor } from "widgets/env_vars_editor.slint";
+import { HardRefresh } from "globals/hard_refresh.slint";
+import { EnvVarsSettings } from "globals/env_vars_settings.slint";
+
+export enum GUIGPUVendor {
+    nvidia,
+    others
+}
 
 export component MainGUI inherits Window {
     width: 500px;
@@ -12,18 +19,11 @@ export component MainGUI inherits Window {
     in property <[string]> compat_tools;
 
     in-out property <int> selected_gpu_index;
-    in-out property <string> current_gpu_vendor;
+    in-out property <GUIGPUVendor> current_gpu_vendor;
     in property <[string]> gpus;
-    callback on_gpu_update();
-    pure callback get_combobox_gpu_id(int) -> string;
-
-    in-out property <[{ key: string, value: string }]> env_vars: [];
-    callback remove_env_var(int);
-    callback add_env_var();
-    callback save_custom_values();
+    callback on_gpu_update(idx: int);
 
     in property <string> game_app_id: "";
-    in-out property <bool> editing_defaults;
 
     pure callback show_download_runner();
     pure callback show_prefix_options();
@@ -32,10 +32,7 @@ export component MainGUI inherits Window {
     callback reset_to_defaults();
     callback update_wrapper();
 
-    in property <bool> reload: false;
-    callback force_reload();
-
-    if(!reload): VerticalBox {
+    if(HardRefresh.refresh): VerticalBox {
         ScrollView {
             viewport-width: self.width;
             VerticalBox {
@@ -47,7 +44,7 @@ export component MainGUI inherits Window {
                     ComboBox {
                         model: root.compat_tools;
                         current-index <=> selected_compat_tool_index;
-                        selected(current-value) => { AppConf.set_opt("compat_tool", current-value) }
+                        selected(current-value) => { AppConf.set_opt_str("compat_tool", current-value) }
                     }
                     Button {
                         text: "↓";
@@ -66,14 +63,11 @@ export component MainGUI inherits Window {
                         model: root.gpus;
                         enabled: select_gpu_check.checked;
                         current-index <=> selected_gpu_index;
-                        selected(current-value) => {
-                            AppConf.set_opt("selected_gpu", get_combobox_gpu_id(self.current-index));
-                            on_gpu_update();
-                        }
+                        selected(current-value) => { on_gpu_update(self.current-index); }
                     }
                 }
 
-                if current_gpu_vendor == "nvidia": HorizontalLayout {
+                if current_gpu_vendor == GUIGPUVendor.nvidia: HorizontalLayout {
                     nvapi := CheckBox {
                         text: "Use NVAPI extensions";
                         checked: AppConf.get_opt_bool("enabled_tweaks.proton_nvapi");
@@ -124,8 +118,8 @@ export component MainGUI inherits Window {
 
                 if(dxvk_hud_mode.checked): ComboBox {
                     model: ["compiler","devinfo","fps","full","memory","gpuload","drawcalls","frametimes"];
-                    current-value: AppConf.get_opt("dxvk_hud_settings.mode");
-                    selected(current-value) => { AppConf.set_opt("dxvk_hud_settings.mode", current-value) }
+                    current-value: AppConf.get_opt_str("dxvk_hud_settings.mode");
+                    selected(current-value) => { AppConf.set_opt_str("dxvk_hud_settings.mode", current-value) }
                 }
 
                 custom_env_vars := CheckBox {
@@ -134,11 +128,7 @@ export component MainGUI inherits Window {
                     toggled => { AppConf.set_opt_bool("enabled_tweaks.custom_env_vars", self.checked); }
                 }
 
-                if(custom_env_vars.checked): EnvVarsEditor {
-                    current_env_vars <=> env_vars;
-                    remove_env_var(idx) => { remove_env_var(idx) }
-                    add_env_var => { add_env_var() }
-                }
+                if(custom_env_vars.checked): EnvVarsEditor {}
             }
         }
         VerticalBox {
@@ -151,12 +141,12 @@ export component MainGUI inherits Window {
                 }
                 CheckBox {
                     text: "Show defaults";
-                    checked <=> editing_defaults;
+                    checked: AppConf.editing_defaults;
                     toggled => {
-                        editing_defaults = !editing_defaults;
-                        save_custom_values();
-                        editing_defaults = !editing_defaults;
-                        force_reload();
+                        EnvVarsSettings.save_env_vars();
+                        AppConf.update_global_config();
+                        AppConf.editing_defaults = self.checked;
+                        HardRefresh.force_refresh();
                     }
                 }
                 Button {

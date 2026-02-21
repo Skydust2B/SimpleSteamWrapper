@@ -1,0 +1,18 @@
+import { AppConf } from "app_conf.slint";
+
+export struct EnvVar {
+    key: string,
+    value: string
+}
+
+export global EnvVarsSettings  {
+    callback add_env_var();
+    callback remove_env_var(int);
+    in-out property <[EnvVar]> env_vars: [];
+
+    pure callback update_serialized_env_vars([EnvVar], editing_defaults: bool);
+
+    public pure function save_env_vars() {
+        return update_serialized_env_vars(env_vars, AppConf.editing_defaults);
+    }
+}

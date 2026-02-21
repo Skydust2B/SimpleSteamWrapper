@@ -1,0 +1,40 @@
+export global AppConf  {
+    pure callback get_opt(key: string, editing_defaults: bool) -> string;
+    callback set_opt(key: string, value: string, editing_defaults: bool);
+
+    pure callback update_global_config();
+
+    in property <bool> editing_defaults;
+
+    public pure function get_opt_str(key: string) -> string {
+        return get_opt(key, editing-defaults);
+    }
+
+    public function set_opt_str(key: string, value: string) {
+        return set_opt(key, value, editing-defaults);
+    }
+
+    public pure function get_opt_bool(path: string) -> bool {
+        return get_opt_str(path) == "true";
+    }
+
+    public function set_opt_bool(path: string, parameter: bool) {
+        set_opt_str(path, parameter ? "true" : "false");
+    }
+
+    public pure function get_opt_int(path: string) -> int {
+        return get_opt_str(path).to-float();
+    }
+
+    public function set_opt_int(path: string, parameter: int) {
+        set_opt_str(path, parameter.to-fixed(0));
+    }
+
+    public pure function get_opt_float(path: string) -> float {
+        return get_opt_str(path).to-float();
+    }
+
+    public function set_opt_float(path: string, parameter: float) {
+        set_opt_str(path, parameter.to-fixed(2));
+    }
+}
