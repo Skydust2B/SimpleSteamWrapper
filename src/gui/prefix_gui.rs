@@ -4,7 +4,7 @@ use tokio::sync::{Mutex};
 use rfd::FileDialog;
 use slint::{ComponentHandle, SharedString};
 use which::which;
-use crate::command_helpers::parse_cmdline;
+use crate::utils::command_utils::parse_cmdline;
 use crate::compatibility_tools::compat_tool::{get_compat_tool_from_config};
 use crate::compatibility_tools::app_prefix::{AppPrefix};
 use crate::gui::dialog::show_message_dialog;

@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::process::{ExitStatus, Stdio};
 use log::info;
 use tokio::process::Command;
-use crate::command_helpers::{find_terminal_emulator, to_quoted_string};
+use crate::utils::command_utils::{find_terminal_emulator, to_quoted_string};
 use crate::compatibility_tools::compat_tool::{CompatTool};
 
 pub struct AppPrefix {
