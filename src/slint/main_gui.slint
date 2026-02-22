@@ -163,16 +163,16 @@ export component MainGUI inherits Window {
                     clicked => { reset_to_defaults(); }
                 }
                 Button {
-                    text: "Update Wrapper";
-                    clicked => { update_wrapper(); }
-                }
-                Button {
-                    horizontal-stretch: 1;
-                    text: is_setting_key ? "Press a key" : "Set GUI Key";
+                    horizontal-stretch: 0;
+                    text: is_setting_key ? "Press a key" : "Set key";
                     clicked => {
                         is_setting_key = true;
                         enable_setting_key();
                     }
+                }
+                Button {
+                    text: "Update Wrapper";
+                    clicked => { update_wrapper(); }
                 }
                 Button {
                     text: "Save and " + (game_app_id.is-empty ? "quit" : "continue");
