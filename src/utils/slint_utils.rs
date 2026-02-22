@@ -36,6 +36,7 @@ pub trait WeakUtils<T> {
     fn upgrade_and_run<F>(&self, run: F)
     where F: FnOnce(T);
 }
+
 impl<T> WeakUtils<T> for Weak<T>where
     T: ComponentHandle {
     fn upgrade_and_run<F>(&self, run: F)

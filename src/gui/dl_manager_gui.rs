@@ -11,7 +11,7 @@ use crate::compatibility_tools::remote_compat_tools_provider::{RemoteCompatTools
 use crate::dl_manager::downloadable_asset::DownloadableAsset;
 use crate::compatibility_tools::updatable_compat_tool::UpdatableCompatTool;
 use crate::gui::globals::init_hard_refresh::{WindowForceRefresh};
-use crate::slint_utils::{ClonableModel, WeakUtils};
+use crate::utils::slint_utils::{ClonableModel, WeakUtils};
 
 fn release_model(can_be_updated: bool, display_name: &str, name: &str) -> Release {
     let compat = CompatToolsList::get();

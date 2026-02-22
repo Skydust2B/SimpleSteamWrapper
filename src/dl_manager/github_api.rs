@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use crate::dl_manager::client::client;
-use crate::io_utils::strip_all_extensions;
+use crate::utils::io_utils::strip_all_extensions;
 
 #[derive(Debug,Serialize,Deserialize,Clone)]
 pub struct SimplifiedGithubAsset {

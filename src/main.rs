@@ -10,11 +10,11 @@ mod gpu_tools;
 mod command_helpers;
 mod gui;
 mod dl_manager;
-mod io_utils;
 mod steam;
-mod slint_utils;
+mod utils;
 
 use std::{env};
+use std::str::FromStr;
 use tracing_subscriber::EnvFilter;
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use log::info;
@@ -51,7 +51,9 @@ async fn main() {
 
     let device_state = DeviceState::new();
     let keys: Vec<Keycode> = device_state.get_keys();
-    if keys.contains(&Keycode::LShift) { // hold Shift to show GUI
+    let config_key_code = GlobalConfig::get().general.gui_trigger_key;
+    let parsed_key_code = &Keycode::from_str(&config_key_code).expect("Failed to parse keycode");
+    if keys.contains(&parsed_key_code) { // hold Shift to show GUI
         show_gui();
     }
 

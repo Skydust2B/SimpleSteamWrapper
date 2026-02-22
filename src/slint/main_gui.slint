@@ -11,7 +11,7 @@ export enum GUIGPUVendor {
 }
 
 export component MainGUI inherits Window {
-    width: 500px;
+    width: 575px;
     height: 600px;
     title: "Simple Steam Wrapper";
 
@@ -23,14 +23,18 @@ export component MainGUI inherits Window {
     in property <[string]> gpus;
     callback on_gpu_update(idx: int);
 
-    in property <string> game_app_id: "";
+    in property <string> game_app_id: "0";
 
     pure callback show_download_runner();
     pure callback show_prefix_options();
 
-    in property <string> app_version;
+    in property <string> app_version: "9.99.99";
     callback reset_to_defaults();
     callback update_wrapper();
+    callback save_and_continue();
+
+    in-out property <bool> is_setting_key;
+    callback enable_setting_key();
 
     if(HardRefresh.refresh): VerticalBox {
         ScrollView {
@@ -134,7 +138,6 @@ export component MainGUI inherits Window {
         VerticalBox {
             if (!game_app_id.is-empty): HorizontalBox {
                 Text {
-                    horizontal-alignment: center;
                     vertical-alignment: center;
                     font-weight: 600;
                     text: "AppId: " + game_app_id;
@@ -156,18 +159,30 @@ export component MainGUI inherits Window {
             }
             HorizontalBox {
                 Button {
-                    text: "Default";
+                    text: "Reset";
                     clicked => { reset_to_defaults(); }
                 }
                 Button {
                     text: "Update Wrapper";
                     clicked => { update_wrapper(); }
                 }
-                Text {
-                    horizontal-alignment: center;
-                    vertical-alignment: center;
-                    text: "Version: "+ app_version;
+                Button {
+                    horizontal-stretch: 1;
+                    text: is_setting_key ? "Press a key" : "Set GUI Key";
+                    clicked => {
+                        is_setting_key = true;
+                        enable_setting_key();
+                    }
                 }
+                Button {
+                    text: "Save and " + (game_app_id.is-empty ? "quit" : "continue");
+                    clicked => { save_and_continue(); }
+                }
+            }
+            Text {
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                text: "Version: "+ app_version;
             }
         }
     }

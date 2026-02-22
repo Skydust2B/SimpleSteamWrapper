@@ -1,8 +1,13 @@
 use crate::gui::globals::global_init_trait::ComponentInitExt;
 use std::cell::RefCell;
+use std::process;
 use std::rc::Rc;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
+use device_query::{DeviceQuery, DeviceState, Keycode};
 use serde_yaml::{Value};
-use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
+use slint::{ComponentHandle, ModelRc, SharedString, VecModel, Weak};
+use tokio::time::{interval};
 use crate::{AppConf, EnvVar, EnvVarsSettings, GUIGPUVendor, HardRefresh, MainGUI};
 use crate::compatibility_tools::compat_tool::{get_compat_tool_from_config};
 use crate::compatibility_tools::compat_tools_list::{CompatToolsList};
@@ -13,19 +18,11 @@ use crate::gpu_tools::gpu_list::GPUList;
 use crate::gui::dialog::show_message_dialog;
 use crate::gui::globals::init_hard_refresh::WindowForceRefresh;
 use crate::install::install::{install_or_update, SIMPLE_STEAM_WRAPPER_NAME};
-use crate::slint_utils::WeakUtils;
 use crate::steam::steam::get_steam_env_app_id;
+use crate::utils::rs_utils::VecAddons;
+use crate::utils::slint_utils::WeakUtils;
 
-fn find_index<T, F>(items: &[T], predicate: F) -> Option<i32>
-where
-    F: Fn(&T) -> bool,
-{
-    items.iter()
-        .position(predicate)
-        .and_then(|idx| i32::try_from(idx).ok())
-}
-
-fn init_gui_with_conf(window: &MainGUI, shared_config: Rc<RefCell<SerializedConfig>>) {
+fn init_gui_with_conf(window: &MainGUI, shared_config: Arc<Mutex<SerializedConfig>>) {
     // Compat tool list
     let compat_tools = CompatToolsList::get();
     let compat_tools_names = compat_tools.iter()
@@ -36,7 +33,7 @@ fn init_gui_with_conf(window: &MainGUI, shared_config: Rc<RefCell<SerializedConf
     window.set_compat_tools(model);
 
     let initial_compat_tool_index = if let Some(compat_tool_from_conf) = get_compat_tool_from_config() {
-        find_index(&compat_tools, |ct| {
+        compat_tools.find_index(|ct| {
             ct.name == compat_tool_from_conf.name
         }).unwrap()
     } else {
@@ -50,7 +47,7 @@ fn init_gui_with_conf(window: &MainGUI, shared_config: Rc<RefCell<SerializedConf
     window.set_gpus(model);
 
     let gpu_from_conf = GPU::from_config();
-    let initial_gpu_index = find_index(&gpus, |g| {
+    let initial_gpu_index = gpus.find_index(|g| {
         &gpu_from_conf.as_formatted_id() == &g.as_formatted_id()
     }).unwrap();
 
@@ -66,7 +63,7 @@ fn init_gui_with_conf(window: &MainGUI, shared_config: Rc<RefCell<SerializedConf
     window.global::<EnvVarsSettings>().set_env_vars(
         Rc::new({
             let shared_serialized_conf = shared_config.clone();
-            let borrowed_serialized_conf = shared_serialized_conf.borrow();
+            let borrowed_serialized_conf = shared_serialized_conf.lock().unwrap();
             borrowed_serialized_conf
                 .get_app_value("custom_env_vars", is_editing_default)
                 .unwrap()
@@ -82,11 +79,30 @@ fn init_gui_with_conf(window: &MainGUI, shared_config: Rc<RefCell<SerializedConf
     );
 }
 
+async fn wait_for_key_loop(window: Weak<MainGUI>, shared_config: Arc<Mutex<SerializedConfig>>) {
+    let mut loop_interval = interval(Duration::from_millis(50));
+    loop {
+        loop_interval.tick().await;
+
+        let device_state = DeviceState::new();
+        let keys: Vec<Keycode> = device_state.get_keys();
+        if let Some(pressed_key) = keys.get(0) {
+            if *pressed_key != Keycode::Escape {
+                shared_config.lock().unwrap().set_value("general.gui_trigger_key", Value::from(pressed_key.to_string()));
+            }
+            let _ = window.upgrade_in_event_loop(|w| {
+                w.set_is_setting_key(false)
+            });
+            break;
+        }
+    }
+}
+
 pub fn show_gui() {
     let _ = slint::set_xdg_app_id("fr.Skydust.SimpleSteamWrapper");
     let window = MainGUI::new().expect("Couldn't create window");
 
-    let shared_config: Rc<RefCell<SerializedConfig>> = Rc::new(RefCell::new(SerializedConfig::from_global_config()));
+    let shared_config: Arc<Mutex<SerializedConfig>> = Arc::new(Mutex::new(SerializedConfig::from_global_config()));
 
     window.init_global::<AppConf>(shared_config.clone());
     window.init_global::<HardRefresh>({
@@ -116,7 +132,7 @@ pub fn show_gui() {
         move |idx| {
             // Resetting nvidia vars
             weak_window.upgrade_and_run(|w| {
-                let mut borrow_config = shared_config.borrow_mut();
+                let mut borrow_config = shared_config.lock().unwrap();
 
                 let gpus = GPUList::get();
                 let selected = gpus.get(idx as usize).unwrap().as_formatted_id().into();
@@ -157,7 +173,7 @@ pub fn show_gui() {
         let weak_window = window.as_weak();
         move || {
             let weak_window = weak_window.clone();
-            shared_config.borrow().update_global_config();
+            shared_config.lock().unwrap().update_global_config();
             crate::gui::dl_manager_gui::show_gui(weak_window);
         }
     });
@@ -167,26 +183,50 @@ pub fn show_gui() {
         let weak_window = window.as_weak();
         move || {
             let window_default = weak_window.upgrade().unwrap();
-            shared_config
-                .borrow_mut()
+            shared_config.lock().unwrap()
                 .reset_serialized_opts_to_defaults(window_default.global::<AppConf>().get_editing_defaults());
             window_default.force_refresh();
+        }
+    });
+
+    window.on_enable_setting_key({
+        let shared_config = shared_config.clone();
+        let weak_window = window.as_weak();
+        move || {
+            let shared_config = shared_config.clone();
+            let weak_window = weak_window.clone();
+            tokio::spawn(wait_for_key_loop(weak_window, shared_config));
         }
     });
 
     window.on_show_prefix_options({
         let shared_config = shared_config.clone();
         move || {
-            shared_config.borrow().update_global_config();
+            shared_config.lock().unwrap().update_global_config();
             crate::gui::prefix_gui::show_gui();
         }
     });
 
-    init_gui_with_conf(&window, shared_config.clone());
+    let should_continue = Rc::new(RefCell::new(false));
+    window.on_save_and_continue({
+        let weak_window = window.as_weak();
+        let shared_config = shared_config.clone();
+        let should_continue = should_continue.clone();
+        move || {
+            *should_continue.borrow_mut() = true;
+            weak_window.upgrade_and_run(|w| w.global::<EnvVarsSettings>().invoke_save_env_vars());
+            shared_config.lock().unwrap().update_global_config();
+            GlobalConfig::save();
+
+            slint::quit_event_loop().expect("Unable to stop event loop");
+        }
+    });
+
+    init_gui_with_conf(&window, shared_config);
 
     let _ = window.run().unwrap();
 
-    window.global::<EnvVarsSettings>().invoke_save_env_vars();
-    shared_config.borrow().update_global_config();
-    GlobalConfig::save();
+    if !*should_continue.borrow() {
+        process::exit(0);
+    }
 }

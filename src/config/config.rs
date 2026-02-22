@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use device_query::Keycode;
 use serde::{Deserialize, Serialize};
 use crate::tweaks::dxvk_hud_mode::DXVKHUDSettings;
 use crate::tweaks::gamescope::GamescopeSettings;
@@ -12,7 +13,7 @@ pub struct Config {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct General {
-    pub theme: String,
+    pub gui_trigger_key: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -29,7 +30,7 @@ impl Config {
     pub(crate) fn new() -> Self {
         Self {
             general: General {
-                theme: "".to_string() // Doesn't do anything / Placeholder
+                gui_trigger_key: Keycode::LShift.to_string(),
             },
             defaults: Options {
                 selected_gpu: "".to_string(),

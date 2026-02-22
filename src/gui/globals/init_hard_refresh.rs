@@ -1,7 +1,7 @@
 use slint::{ComponentHandle};
 use crate::{HardRefresh};
 use crate::gui::globals::global_init_trait::GlobalInitializer;
-use crate::slint_utils::WeakUtils;
+use crate::utils::slint_utils::WeakUtils;
 
 impl<T> GlobalInitializer<T> for HardRefresh<'_>
 where

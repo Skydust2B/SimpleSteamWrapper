@@ -1,5 +1,5 @@
-use std::cell::RefCell;
 use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 use serde_yaml::{Mapping, Value};
 use slint::{ComponentHandle, Model, VecModel};
 use crate::{EnvVar, EnvVarsSettings};
@@ -11,9 +11,9 @@ where
     T: ComponentHandle + 'static,
     for<'a> EnvVarsSettings<'a>: slint::Global<'a, T>,
 {
-    type Ctx = Rc<RefCell<SerializedConfig>>;
+    type Ctx = Arc<Mutex<SerializedConfig>>;
 
-    fn init_global(component: &T, shared_config: Rc<RefCell<SerializedConfig>>) {
+    fn init_global(component: &T, shared_config: Arc<Mutex<SerializedConfig>>) {
         let env_vars_global = component.global::<EnvVarsSettings>();
 
         env_vars_global.on_update_serialized_env_vars({
@@ -27,7 +27,8 @@ where
                             acc
                         });
 
-                shared_serialized_conf.borrow_mut().set_app_value(
+                shared_serialized_conf.lock().unwrap()
+                    .set_app_value(
                     "custom_env_vars",
                     new_opts.into(),
                     is_editing_defaults
