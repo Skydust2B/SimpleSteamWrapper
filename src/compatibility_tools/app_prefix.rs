@@ -41,6 +41,10 @@ impl AppPrefix {
         }
     }
 
+    pub fn open_folder(&self) {
+        open::that_detached(self.path.as_path()).expect("Unable to open folder");
+    }
+
     pub async fn run_wiretricks(&self, compat_tool: &CompatTool) -> io::Result<ExitStatus> {
         let wine_path = self.as_wine_path();
         let wine_bin_path = compat_tool.find_wine_bin()

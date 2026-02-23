@@ -27,8 +27,18 @@ pub fn show_gui() {
         window.set_runner_name(cfg_compat_tool.name.into());
     }
 
+    window.on_open_prefix({
+        let shared_pfx_ref = shared_pfx_ref.clone();
+        move || {
+            let shared_pfx_ref = shared_pfx_ref.clone();
+            tokio::spawn(async move {
+                shared_pfx_ref.lock().await.open_folder();
+            });
+        }
+    });
+
     window.on_run_in_prefix({
-        let shared_pfx_ref = Arc::clone(&shared_pfx_ref);
+        let shared_pfx_ref = shared_pfx_ref.clone();
         move |in_terminal, custom_cmd| {
             let cfg_compat_tool = get_compat_tool_from_config();
             if cfg_compat_tool.is_none() {

@@ -14,6 +14,7 @@ export component PrefixSettingsGUI inherits Window {
     in-out property <bool> recreating_prefix: false;
     in-out property <bool> running_winetricks: false;
 
+    callback open_prefix();
     callback recreate_prefix();
     callback run_winetricks();
     callback run_in_prefix(bool, string);
@@ -34,9 +35,15 @@ export component PrefixSettingsGUI inherits Window {
             VerticalBox {
                 HorizontalBox {
                     Button {
+                        text: "Open prefix folder";
+                        clicked => {
+                            open_prefix()
+                        }
+                    }
+                    Button {
                         enabled: !recreating_prefix;
                         vertical-stretch: 0;
-                        text: "Recreate Prefix";
+                        text: "Recreate prefix";
                         clicked => {
                             recreating_prefix = true;
                             recreate_prefix()
