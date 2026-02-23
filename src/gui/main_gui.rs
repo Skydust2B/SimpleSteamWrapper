@@ -90,8 +90,15 @@ async fn wait_for_key_loop(window: Weak<MainGUI>, shared_config: Arc<Mutex<Seria
             if *pressed_key != Keycode::Escape {
                 shared_config.lock().unwrap().set_value("general.gui_trigger_key", Value::from(pressed_key.to_string()));
             }
-            let _ = window.upgrade_in_event_loop(|w| {
-                w.set_is_setting_key(false)
+            let shared_config = shared_config.clone();
+            let _ = window.upgrade_in_event_loop(move |w| {
+                w.set_setting_key({
+                    let borrowed = shared_config.lock().unwrap();
+                    borrowed.get_value("general.gui_trigger_key")
+                        .expect("No trigger key").as_str()
+                        .expect("Unparseable trigger key").to_string().into()
+                });
+                w.set_is_setting_key(false);
             });
             break;
         }
@@ -187,6 +194,14 @@ pub fn show_gui() {
                 .reset_serialized_opts_to_defaults(window_default.global::<AppConf>().get_editing_defaults());
             window_default.force_refresh();
         }
+    });
+
+    window.set_setting_key({
+        let shared_config = shared_config.clone();
+        let borrowed = shared_config.lock().unwrap();
+        borrowed.get_value("general.gui_trigger_key")
+            .expect("No trigger key").as_str()
+            .expect("Unparseable trigger key").to_string().into()
     });
 
     window.on_enable_setting_key({

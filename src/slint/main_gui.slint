@@ -33,6 +33,7 @@ export component MainGUI inherits Window {
     callback update_wrapper();
     callback save_and_continue();
 
+    in property <string> setting_key: "";
     in-out property <bool> is_setting_key;
     callback enable_setting_key();
 
@@ -164,7 +165,7 @@ export component MainGUI inherits Window {
                 }
                 Button {
                     horizontal-stretch: 0;
-                    text: is_setting_key ? "Press a key" : "Set key";
+                    text: is_setting_key ? "Press a key" : setting_key;
                     clicked => {
                         is_setting_key = true;
                         enable_setting_key();
