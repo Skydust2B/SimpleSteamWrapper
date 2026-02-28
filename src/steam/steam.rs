@@ -1,7 +1,7 @@
 use std::{env, fs};
 use std::path::PathBuf;
 use std::string::ToString;
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use vdf_reader::entry::{Entry, Table};
 use crate::compatibility_tools::compat_tool::{CompatTool};
 use crate::steam::installed_steam_apps::{get_installed_steam_apps, InstalledSteamApp};
@@ -85,6 +85,13 @@ pub fn parse_steam_compat_tool(path: PathBuf) -> anyhow::Result<CompatTool> {
         .and_then(|v| v.as_table())
         .and_then(|v| v.values().next())
         .unwrap();
+
+    if let Some(osfrom) = compat_tool_data.get("from_oslist") {
+        let osfrom_str = osfrom.as_str().unwrap_or_default().to_lowercase();
+        if osfrom_str != "windows" {
+            return Err(anyhow!("Not a windows to linux compat tool, skipping."))
+        }
+    }
 
     let compat_tool_dir_path = path.join(
         compat_tool_data.get("install_path")
