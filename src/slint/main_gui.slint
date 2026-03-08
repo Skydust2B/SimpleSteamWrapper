@@ -95,10 +95,23 @@ export component MainGUI inherits Window {
                     checked: AppConf.get_opt_bool("enabled_tweaks.gamemode");
                     toggled => { AppConf.set_opt_bool("enabled_tweaks.gamemode", self.checked); }
                 }
-                CheckBox {
-                    text: "Enable wayland support (GE-Proton/proton-cachyos)";
-                    checked: AppConf.get_opt_bool("enabled_tweaks.proton_wayland");
-                    toggled => { AppConf.set_opt_bool("enabled_tweaks.proton_wayland", self.checked); }
+
+                HorizontalLayout {
+                    proton_wayland := CheckBox {
+                        text: "Enable wayland support (GE-Proton/proton-cachyos)";
+                        checked: AppConf.get_opt_bool("enabled_tweaks.proton_wayland");
+                        toggled => {
+                            AppConf.set_opt_bool("enabled_tweaks.proton_wayland", self.checked);
+                            if (!self.checked) {
+                                AppConf.set_opt_bool("enabled_tweaks.proton_wayland_hdr", false);
+                            }
+                        }
+                    }
+                    if proton_wayland.checked: CheckBox {
+                        text: "Enable HDR";
+                        checked: AppConf.get_opt_bool("enabled_tweaks.proton_wayland_hdr");
+                        toggled => { AppConf.set_opt_bool("enabled_tweaks.proton_wayland_hdr", self.checked); }
+                    }
                 }
 
                 gamescope_check := CheckBox {
