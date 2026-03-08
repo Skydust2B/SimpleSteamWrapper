@@ -1,14 +1,21 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
+use regex::Regex;
 use crate::dl_manager::downloadable_asset::DownloadableAsset;
 use crate::dl_manager::github_api::fetch_github_releases;
+
+#[derive(Debug,Clone)]
+pub struct RemoteCompatToolVariant {
+    pub name: &'static str,
+    pub regex: &'static str
+}
 
 #[derive(Debug,Clone)]
 pub struct RemoteCompatToolsProvider {
     pub name: &'static str,
     pub remote_path: &'static str,
-    pub variants: &'static [&'static str]
+    pub variants: &'static [&'static RemoteCompatToolVariant]
 }
 
 static ASSETS_CACHE: Lazy<Mutex<HashMap<String, Vec<DownloadableAsset>>>> = Lazy::new(|| Mutex::new(HashMap::new()));
@@ -25,11 +32,12 @@ impl RemoteCompatToolsProvider {
 
         for asset in &assets {
             for variant in self.variants.iter().rev() {
-                if !asset.asset_name.contains(variant) {
+                let variant_rgx = Regex::new(variant.regex)?;
+                if !variant_rgx.is_match(&asset.asset_name){
                     continue;
                 }
 
-                map.entry(variant.to_string())
+                map.entry(variant.name.to_string())
                     .or_insert_with(Vec::new)
                     .push(asset.clone());
                 break;
@@ -78,11 +86,26 @@ pub const REMOTE_COMPAT_TOOL_PROVIDERS: &[RemoteCompatToolsProvider] = &[
     RemoteCompatToolsProvider {
         name: "proton-cachyos",
         remote_path: "CachyOS/proton-cachyos",
-        variants: &["slr-x86_64", "slr-x86_64_v2", "slr-x86_64_v3", "slr-x86_64_v4"]
+        variants: &[&RemoteCompatToolVariant{
+            name: "slr",
+            regex: "slr"
+        }, &RemoteCompatToolVariant{
+            name: "slr x86_64_v2",
+            regex: "slr-x86_64_v2"
+        }, &RemoteCompatToolVariant{
+            name: "slr x86_64_v3",
+            regex: "slr-x86_64_v3"
+        }, &RemoteCompatToolVariant{
+            name: "slr x86_64_v4",
+            regex: "slr-x86_64_v4"
+        }]
     },
     RemoteCompatToolsProvider{
         name: "GE-Proton",
         remote_path: "GloriousEggroll/proton-ge-custom",
-        variants: &[""]
+        variants: &[&RemoteCompatToolVariant{
+            name: "Default",
+            regex: ""
+        }]
     }
 ];

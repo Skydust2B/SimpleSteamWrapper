@@ -3,7 +3,7 @@ use shlex::split;
 use which::which;
 
 pub fn to_quoted_string(args: Vec<String>) -> String {
-    format!("\"{}\"", args.join("\" \""))
+    format!("\"{}\"", args.iter().map(|arg| arg.replace("\"", "\\\"")).collect::<Vec<String>>().join("\" \""))
 }
 
 pub fn find_terminal_emulator() -> Option<String> {

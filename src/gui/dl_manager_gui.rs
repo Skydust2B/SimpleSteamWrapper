@@ -59,7 +59,7 @@ pub fn show_gui(main_gui: Weak<MainGUI>) {
     let window = DlManagerGUI::new().unwrap();
 
     let providers_model = ClonableModel::new(REMOTE_COMPAT_TOOL_PROVIDERS.into());
-    let variant_model: ClonableModel<String> = ClonableModel::new(providers_model.get_from_idx(0).variants.to_vec().iter().map(|e| e.to_string()).collect());
+    let variant_model: ClonableModel<String> = ClonableModel::new(providers_model.get_from_idx(0).variants.to_vec().iter().map(|e| e.name.to_string()).collect());
 
     window.set_provider_names(providers_model.to_model_rc(|e| e.name.to_string()));
     window.set_variants(variant_model.to_model_rc(|variants| variants.clone()));
@@ -153,7 +153,7 @@ pub fn show_gui(main_gui: Weak<MainGUI>) {
             let provider = providers_model.get_from_idx(provider_idx);
 
             if update_variants {
-                let new_variants = provider.variants.to_vec().iter().map(|e| e.to_string()).collect();
+                let new_variants = provider.variants.to_vec().iter().map(|e| e.name.to_string()).collect();
                 variant_model.set_model(new_variants);
 
                 if let Some(window) = weak_window.upgrade() {
