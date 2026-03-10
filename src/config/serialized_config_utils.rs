@@ -22,10 +22,9 @@ pub fn value_to_shared_string(value: Option<&Value>) -> SharedString {
 fn parse_guess(val: String) -> Value {
     if let Ok(b) = val.parse::<bool>() { Value::Bool(b) }
     else if let Ok(i) = val.parse::<i64>() { Value::Number(i.into()) }
-    else if let Ok(f) = val.parse::<f64>() {
-        Value::Number(serde_yaml::Number::from(f))
-    } else {
-        Value::String(val.to_string())
+    else if let Ok(f) = val.parse::<f64>() { Value::Number(f.into()) }
+    else {
+        Value::String(val)
     }
 }
 
@@ -53,8 +52,16 @@ impl SerializedConfig {
         key: &str,
         val: Value
     ) {
-        *self.get_mutable_value(key)
-            .expect(&format!("The key doesn't seem to exist: {}", &key)) = val;
+        let last = key.split(".").last().unwrap();
+        let parent_key = key.replace(&format!(".{}", last), "");
+
+        let parent_as_map = self.get_mutable_value(&parent_key)
+            .expect(&format!("The parent key doesn't exist: {}", &key))
+            .as_mapping_mut()
+            .expect(&format!("The parent key is not a mapping: {}", &key));
+
+        let old_value = parent_as_map.insert(Value::from(last), val.clone());
+        debug!("{}: {:?} -> {:?}", key, old_value, val);
     }
 
     pub fn update_global_config(&self) {
@@ -119,17 +126,6 @@ impl SerializedConfig {
 
         debug!("set_opt: {:?} -> {:?} (is_editing_default: {})", &key, &val, is_editing_defaults);
 
-        // Enabled_tweaks is a partial map, that should probably change later
-        if key.contains("enabled_tweaks.") {
-            let last = key.split(".").last().unwrap();
-            let parent_key = conf_path.replace(&format!(".{}", last), "");
-            let mutable_value = self.get_mutable_value(&parent_key)
-                .expect(&format!("Missing base key enabled_tweaks for {}", &parent_key));
-
-            mutable_value.as_mapping_mut().unwrap()
-                .insert(Value::from(last), val);
-            return;
-        }
         self.set_value(&conf_path, val);
     }
 
