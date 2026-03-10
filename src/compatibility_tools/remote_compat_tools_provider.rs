@@ -87,8 +87,8 @@ pub const REMOTE_COMPAT_TOOL_PROVIDERS: &[RemoteCompatToolsProvider] = &[
         name: "proton-cachyos",
         remote_path: "CachyOS/proton-cachyos",
         variants: &[&RemoteCompatToolVariant{
-            name: "slr",
-            regex: "slr"
+            name: "slr x86_64",
+            regex: "slr-x86_64"
         }, &RemoteCompatToolVariant{
             name: "slr x86_64_v2",
             regex: "slr-x86_64_v2"

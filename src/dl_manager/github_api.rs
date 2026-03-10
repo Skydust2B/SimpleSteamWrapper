@@ -39,10 +39,6 @@ impl SimplifiedGithubRelease {
         self.assets
             .iter()
             .filter(|a| a.content_type == supported_archive.content_type)
-            .filter(|a| {
-                let is_cachyos = a.name.contains("proton-cachyos");
-                !is_cachyos || (is_cachyos && a.name.contains("x86_64"))
-            } )
             .map(|f| f.clone()).collect()
     }
 }
