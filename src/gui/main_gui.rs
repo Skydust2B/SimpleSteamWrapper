@@ -229,11 +229,13 @@ pub fn show_gui() {
         let should_continue = should_continue.clone();
         move || {
             *should_continue.borrow_mut() = true;
-            weak_window.upgrade_and_run(|w| w.global::<EnvVarsSettings>().invoke_save_env_vars());
-            shared_config.lock().unwrap().update_global_config();
-            GlobalConfig::save();
-
-            slint::quit_event_loop().expect("Unable to stop event loop");
+            weak_window.upgrade_and_run(|w| {
+                w.global::<EnvVarsSettings>().invoke_save_env_vars();
+                shared_config.lock().unwrap().update_global_config();
+                GlobalConfig::save();
+                w.hide().unwrap();
+                slint::quit_event_loop().expect("Unable to stop event loop");
+            })
         }
     });
 
