@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-use log::{warn};
+use log::{info, warn};
 use crate::compatibility_tools::compat_tools_list::{CompatToolsList};
 use crate::config::global_config::{GlobalConfig};
 
@@ -35,5 +35,6 @@ pub fn get_compat_tool_from_config() -> Option<CompatTool> {
         warn!("Unable to find selected compatibility tool {}", cfg.compat_tool);
         return None;
     }
+    info!("Found selected compatibility tool {}", cfg.compat_tool);
     Some(retrieved_ct.unwrap().clone())
 }

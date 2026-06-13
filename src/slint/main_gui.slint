@@ -57,7 +57,8 @@ export component MainGUI inherits Window {
                     }
                 }
 
-                if root.gpus.length > 1: Rectangle {
+                if root.gpus.length > 1: HorizontalLayout {
+                    spacing: 10px;
                     select_gpu_check := CheckBox {
                         text: "Select GPU";
                         checked: AppConf.get_opt_bool("enabled_tweaks.gpu_tools");

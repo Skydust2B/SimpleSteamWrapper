@@ -1,5 +1,5 @@
 use std::process::Command;
-use log::{info};
+use log::{info, warn};
 use tweaks_macro::tweak;
 use crate::gpu_tools::gpu::{GPU};
 use crate::gpu_tools::nvidia_gpu::get_nvidia_gpu_uuid;
@@ -35,9 +35,24 @@ pub fn get_nvidia_gpu_env_vars(gpu: &GPU) -> Vec<(String,String)> {
     if let Some(uuid) = get_nvidia_gpu_uuid(gpu).ok() {
         info!("Found NVIDIA GPU UUID: {}", uuid);
         env_vars.push((
-            "CUDA_VISIBLE_DEVICES".to_string(),
+            "CUDA_VISIBLE_DEVICES".to_string(), // For cuda application, official var
+            uuid.clone()
+        ));
+
+        env_vars.push((
+            "__NV_PRIME_RENDER_OFFLOAD".to_string(),
+            "1".to_string()
+        ));
+        env_vars.push((
+            "__GLX_VENDOR_LIBRARY_NAME".to_string(),
+            "nvidia".to_string()
+        ));
+        env_vars.push((
+            "__NV_PRIME_RENDER_OFFLOAD_PROVIDER".to_string(), // Isn't documented to work for wayland and isn't supposed to accept UUIDs, but some rumors had them supposedly work anyway
             uuid
         ));
+    } else {
+        warn!("GPU UUID not found, is the driver working ?");
     }
 
     env_vars
