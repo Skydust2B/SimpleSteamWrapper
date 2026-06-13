@@ -59,7 +59,10 @@ pub fn show_gui(main_gui: Weak<MainGUI>) {
     let window = DlManagerGUI::new().unwrap();
 
     let providers_model = ClonableModel::new(REMOTE_COMPAT_TOOL_PROVIDERS.into());
-    let variant_model: ClonableModel<String> = ClonableModel::new(providers_model.get_from_idx(0).variants.to_vec().iter().map(|e| e.name.to_string()).collect());
+    let variant_model: ClonableModel<String> = ClonableModel::new(providers_model
+        .get_from_idx(0).
+        variants.to_vec().iter()
+        .map(|e| e.name.to_string()).collect());
 
     window.set_provider_names(providers_model.to_model_rc(|e| e.name.to_string()));
     window.set_variants(variant_model.to_model_rc(|variants| variants.clone()));
@@ -133,7 +136,7 @@ pub fn show_gui(main_gui: Weak<MainGUI>) {
                     // Update installed tools
                     CompatToolsList::refresh();
                     let _ = weak_window.upgrade_in_event_loop(|window| {
-                        window.invoke_update_ui_releases();
+                        window.invoke_fetch_release(window.get_current_provider_idx(), window.get_current_variant_idx(), false, true);
                         window.set_download_state(DownloadState{
                             is_downloading: false,
                             percent: 0,
@@ -149,6 +152,7 @@ pub fn show_gui(main_gui: Weak<MainGUI>) {
         let assets_release_list = assets_release_list.clone();
         let weak_window = window.as_weak();
         let variant_model = variant_model.clone();
+
         move |provider_idx, variant_idx, update_variants, force_refresh| {
             let provider = providers_model.get_from_idx(provider_idx);
 
@@ -169,6 +173,7 @@ pub fn show_gui(main_gui: Weak<MainGUI>) {
     window.on_delete_compat_tool({
         let weak_window = window.as_weak();
         let cloned_list = assets_release_list.clone();
+
         move |idx| {
             let weak_window = weak_window.clone();
             let cloned_list = cloned_list.lock().unwrap();

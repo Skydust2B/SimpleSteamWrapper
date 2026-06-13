@@ -1,7 +1,6 @@
 import { ComboBox, CheckBox, VerticalBox, HorizontalBox, SpinBox, Button, ScrollView, ListView, LineEdit, ProgressIndicator } from "std-widgets.slint";
 
 // TODO: If auto-update on, check corresponding update on startup and add a 'last-update' to not spam the check
-// TODO: On DLManager open, fetch corresponding GEProton and proton-cachyos versions
 
 struct Release {
     already_downloaded: bool,
@@ -23,6 +22,8 @@ export component DlManagerGUI inherits Window {
 
     in property <[string]> provider_names;
     in property <[string]> variants;
+
+    out property <int> current-provider-idx;
     out property <int> current-variant-idx;
     callback fetch_release(provider_idx: int, variant_idx: int, update_variants: bool, force_refresh: bool);
 
@@ -37,21 +38,22 @@ export component DlManagerGUI inherits Window {
 
     VerticalBox {
         HorizontalBox {
-            selected_list := ComboBox {
+            ComboBox {
                 model: provider_names;
+                current-index <=> current-provider-idx;
                 selected(current-value) => {
-                    fetch_release(selected_list.current-index, 0, true, false);
+                    fetch_release(self.current-index, 0, true, false);
                 }
             }
             if (variants.length > 1): variant := ComboBox {
                 model: variants;
                 horizontal-stretch: 0;
                 current-index <=> current-variant-idx;
-                selected(current-value) => { fetch_release(selected_list.current-index, self.current-index, false, false); }
+                selected(current-value) => { fetch_release(current-provider-idx, self.current-index, false, false); }
             }
             Button {
                 text: "🗘";
-                clicked => { fetch_release(selected_list.current-index, current-variant-idx, false, true); }
+                clicked => { fetch_release(current-provider-idx, current-variant-idx, false, true); }
             }
         }
         ScrollView {

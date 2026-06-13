@@ -95,9 +95,6 @@ pub const REMOTE_COMPAT_TOOL_PROVIDERS: &[RemoteCompatToolsProvider] = &[
         }, &RemoteCompatToolVariant{
             name: "slr x86_64_v3",
             regex: "slr-x86_64_v3"
-        }, &RemoteCompatToolVariant{
-            name: "slr x86_64_v4",
-            regex: "slr-x86_64_v4"
         }]
     },
     RemoteCompatToolsProvider{
