@@ -76,7 +76,7 @@ pub async fn download_and_extract_release_internal(
         if asset.custom_folder.is_some()  {
             info!("Custom destination, writing version file...");
             fs::create_dir_all(destination.clone()).await?;
-            fs::write(destination.clone().join("version"), asset.asset_name.clone()).await?;
+            fs::write(destination.clone().join("ssw_ct_version"), asset.asset_name.clone()).await?;
 
             info!("Replacing compatibilitytool.vdf...");
             let dest_clone = destination.clone();
