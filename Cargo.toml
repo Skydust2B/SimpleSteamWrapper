@@ -26,13 +26,13 @@ which = "8.0.0"
 shlex = "2.0.0"
 reqwest = { version = "0.13.1", default-features = false, features = ["json", "stream", "rustls-no-provider"] }
 autocompress = { version = "0.6.0", default-features = false, features = ["tokio", "gzip", "xz", "zstd", "rayon"] }
-rand = "0.9.2"
+rand = "0.10.0"
 tokio-util = { version = "0.7.18", features = ["io"] }
 futures-util = { version = "0.3.31", default-features = false }
 tokio-tar = "0.3.1"
 libc = { version = "0.2.175", default-features = false }
-strum_macros = "0.27.2"
-strum = "0.27.2"
+strum_macros = "0.28.0"
+strum = "0.28.0"
 open = "5.3.3"
 
 [build]
