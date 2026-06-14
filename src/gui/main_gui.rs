@@ -19,26 +19,25 @@ use crate::gui::dialog::show_message_dialog;
 use crate::gui::globals::init_hard_refresh::WindowForceRefresh;
 use crate::install::install::{install_or_update, SIMPLE_STEAM_WRAPPER_NAME};
 use crate::steam::steam::get_steam_env_app_id;
-use crate::utils::rs_utils::VecAddons;
+use crate::utils::rs_utils::{IteratorAddons, VecAddons};
 use crate::utils::slint_utils::WeakUtils;
 
 fn init_gui_with_conf(window: &MainGUI, shared_config: Arc<Mutex<SerializedConfig>>) {
     // Compat tool list
-    let compat_tools = CompatToolsList::get();
-    let compat_tools_names = compat_tools.iter()
-        .filter(|ct| ct.name != SIMPLE_STEAM_WRAPPER_NAME)
+    let full_compat_tools = CompatToolsList::get();
+    let compat_tools = full_compat_tools
+        .iter()
+        .filter(|ct| ct.name != SIMPLE_STEAM_WRAPPER_NAME);
+
+    let compat_tools_names = compat_tools.clone()
         .map(|ct| ct.name.clone().into()).collect::<VecModel<SharedString>>();
     
     let model: ModelRc<SharedString> = Rc::new(compat_tools_names).into();
     window.set_compat_tools(model);
 
-    let initial_compat_tool_index = if let Some(compat_tool_from_conf) = get_compat_tool_from_config() {
-        compat_tools.find_index(|ct| {
-            ct.name == compat_tool_from_conf.name
-        }).unwrap()
-    } else {
-        0
-    };
+    let initial_compat_tool_index = get_compat_tool_from_config()
+        .and_then(|cct| compat_tools.find_index(|ct| ct.name == cct.name))
+        .unwrap_or(0);
 
     // GPU List
     let gpus = GPUList::get();

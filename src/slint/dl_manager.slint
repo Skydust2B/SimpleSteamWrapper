@@ -2,7 +2,8 @@ import { ComboBox, CheckBox, VerticalBox, HorizontalBox, SpinBox, Button, Scroll
 
 // TODO: If auto-update on, check corresponding update on startup and add a 'last-update' to not spam the check
 
-struct Release {
+struct DlAssetRow {
+    id: int,
     already_downloaded: bool,
     can_be_updated: bool,
     display_name: string,
@@ -25,9 +26,9 @@ export component DlManagerGUI inherits Window {
 
     out property <int> current-provider-idx;
     out property <int> current-variant-idx;
-    callback fetch_release(provider_idx: int, variant_idx: int, update_variants: bool, force_refresh: bool);
+    callback fetch_releases(provider_idx: int, variant_idx: int, update_variants: bool, force_refresh: bool);
 
-    in-out property <[Release]> releases: [];
+    in-out property <[DlAssetRow]> releases: [];
     in property <DownloadState> download_state: {
         is_downloading: false,
         percent: 0
@@ -42,18 +43,18 @@ export component DlManagerGUI inherits Window {
                 model: provider_names;
                 current-index <=> current-provider-idx;
                 selected(current-value) => {
-                    fetch_release(self.current-index, 0, true, false);
+                    fetch_releases(self.current-index, 0, true, false);
                 }
             }
             if (variants.length > 1): variant := ComboBox {
                 model: variants;
                 horizontal-stretch: 0;
                 current-index <=> current-variant-idx;
-                selected(current-value) => { fetch_release(current-provider-idx, self.current-index, false, false); }
+                selected(current-value) => { fetch_releases(current-provider-idx, self.current-index, false, false); }
             }
             Button {
                 text: "🗘";
-                clicked => { fetch_release(current-provider-idx, current-variant-idx, false, true); }
+                clicked => { fetch_releases(current-provider-idx, current-variant-idx, false, true); }
             }
         }
         ScrollView {
@@ -86,7 +87,7 @@ export component DlManagerGUI inherits Window {
                                         max-width: self.preferred-width;
                                         text: row.can_be_updated ? "Update" : "Install";
                                         clicked => { install_compat_tool(idx) }
-                                        enabled: (!download_state.is_downloading && !row.already_downloaded);
+                                        enabled: (!row.already_downloaded || row.can_be_updated) && !download_state.is_downloading;
                                     }
                                 }
                                 //if row.can_be_updated: CheckBox {

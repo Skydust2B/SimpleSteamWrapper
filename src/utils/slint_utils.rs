@@ -26,9 +26,10 @@ impl<T: Clone> ClonableModel<T> {
             .collect::<VecModel<SharedString>>()).into()
     }
 
-    pub fn get_from_idx(&self, index: i32) -> T {
+    pub fn get_from_idx(&self, index: i32) -> Option<T> {
         let elements = self.elements.borrow();
-        elements[index as usize].clone()
+        elements.get(index as usize)
+            .and_then(|e| Some(e.clone()))
     }
 }
 
