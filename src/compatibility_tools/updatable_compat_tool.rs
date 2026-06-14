@@ -14,7 +14,7 @@ pub struct UpdatableCompatTool {
 }
 
 async fn get_version_from_path(path: PathBuf) -> Option<String> {
-    let version_file_path = path.join("ssw_ct_version");
+    let version_file_path = path.join("ssw_version");
     let content = fs::read_to_string(&version_file_path).await;
     if let Ok(content) = content {
         return Some(content.trim().to_string())

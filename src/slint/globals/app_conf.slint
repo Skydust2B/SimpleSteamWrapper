@@ -31,6 +31,7 @@ export global AppConf  {
     }
 
     public pure function get_opt_float(path: string) -> float {
+        // TODO: Watch out for Platform.decimal-separator in the next slint version
         return get_opt_str(path).to-float();
     }
 

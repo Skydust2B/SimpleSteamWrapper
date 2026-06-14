@@ -8,6 +8,7 @@ version = "1.0.2"
 dependencies = [
  "anyhow",
  "autocompress",
+ "chrono",
  "device_query",
  "directories",
  "futures-util",
@@ -697,6 +698,7 @@ dependencies = [
  "iana-time-zone",
  "js-sys",
  "num-traits",
+ "serde",
  "wasm-bindgen",
  "windows-link",
 ]

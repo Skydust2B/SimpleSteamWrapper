@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use crate::dl_manager::client::client;
 use crate::utils::io_utils::strip_all_extensions;
@@ -7,8 +8,8 @@ pub struct SimplifiedGithubAsset {
     pub id: usize,
     pub name: String,
     pub browser_download_url: String,
-    pub(crate) content_type: String, // 	"application/x-xz"(.tar.xz) for cachyos and "application/zstd"/"application/gzip" (.tar.zst/.tar.gz)
-    pub created_at: String
+    pub(crate) content_type: String, // 	"application/x-xz"(.tar.xz) for cachyos and "application/zstd"/"application/gzip" (.tar.zst/.tar.gz)+
+    pub created_at: DateTime<Utc>
 }
 
 #[derive(Debug,Serialize,Deserialize,Clone)]
@@ -16,7 +17,7 @@ pub struct SimplifiedGithubRelease {
     pub id: usize,
     pub name: String,
     pub tag_name: String,
-    pub published_at: String,
+    pub published_at: DateTime<Utc>,
     pub(crate) assets: Vec<SimplifiedGithubAsset>
 }
 

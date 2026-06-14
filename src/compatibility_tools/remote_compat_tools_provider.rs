@@ -1,3 +1,4 @@
+use crate::utils::regex_utils::CachedRegex;
 use std::collections::HashMap;
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
@@ -21,6 +22,16 @@ pub struct RemoteCompatToolsProvider {
 static ASSETS_CACHE: Lazy<Mutex<HashMap<String, Vec<DownloadableAsset>>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
 impl RemoteCompatToolsProvider {
+    pub fn get_variant_from_name(&self, name: &str) -> Option<&'static RemoteCompatToolVariant> {
+        for variant in self.variants.iter().rev() {
+            let variant_rgx = Regex::get(variant.regex.to_string());
+            if let Ok(matched) = variant_rgx && !matched.is_match(&name) {
+                continue;
+            }
+            return Some(variant);
+        }
+        None
+    }
 
     pub async fn fetch_assets_by_variant_name(
         &self,
@@ -31,16 +42,12 @@ impl RemoteCompatToolsProvider {
         let mut map: HashMap<String, Vec<DownloadableAsset>> = HashMap::new();
 
         for asset in &assets {
-            for variant in self.variants.iter().rev() {
-                let variant_rgx = Regex::new(variant.regex)?;
-                if !variant_rgx.is_match(&asset.asset_name){
-                    continue;
-                }
+            let variant = self.get_variant_from_name(&asset.asset_name);
 
-                map.entry(variant.name.to_string())
+            if let Some(found_variant) = variant {
+                map.entry(found_variant.name.to_string())
                     .or_insert_with(Vec::new)
                     .push(asset.clone());
-                break;
             }
         }
 

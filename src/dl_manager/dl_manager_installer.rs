@@ -9,6 +9,7 @@ use tokio::fs;
 use tokio::io::AsyncRead;
 use tokio_tar::Archive;
 use tokio_util::io::StreamReader;
+use crate::dl_manager::client::client;
 use crate::dl_manager::downloadable_asset::DownloadableAsset;
 use crate::steam::steam::{create_compatibility_tool_vdf, get_steam_compat_tools_path};
 use crate::utils::io_utils::{get_temp_folder, move_dir};
@@ -25,9 +26,8 @@ pub async fn download_and_extract_release_internal(
     info!("Creating temp folder {}", temp_folder_path.display());
     fs::create_dir_all(&temp_folder_path).await?;
 
-    let client = reqwest::Client::new();
-    let retrieved_file = client.get(asset.browser_download_url.clone())
-        .header("User-Agent", "Mozilla/5.0")
+    let retrieved_file = client()
+        .get(asset.browser_download_url.clone())
         .send().await?.error_for_status()?;
 
     let total_size = retrieved_file.content_length().unwrap_or(0);
@@ -74,9 +74,9 @@ pub async fn download_and_extract_release_internal(
         }
         move_dir(&entry.path(), &destination).await?;
         if asset.custom_folder.is_some()  {
-            info!("Custom destination, writing version file...");
-            fs::create_dir_all(destination.clone()).await?;
-            fs::write(destination.clone().join("ssw_ct_version"), asset.asset_name.clone()).await?;
+            info!("Custom destination, writing SSW version file...");
+            let version_file = destination.clone().join("ssw_version");
+            fs::write(version_file, asset.asset_name.clone()).await?;
 
             info!("Replacing compatibilitytool.vdf...");
             let dest_clone = destination.clone();

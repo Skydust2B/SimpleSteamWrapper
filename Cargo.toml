@@ -1,39 +1,40 @@
 [package]
 name = "Simple-Steam-Wrapper"
 version = "1.0.2"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 tweaks_macro = { path = "tweaks_macro" }
 device_query = "4.0.1"
 vdf-reader = "0.3.3"
-log = "0.4.27"
-tracing-subscriber = { version = "0.3.22", default-features = true, features = ["fmt", "env-filter"] }
+log = "0.4.32"
+tracing-subscriber = { version = "0.3.23", default-features = true, features = ["fmt", "env-filter"] }
 pci-info = { version = "0.3.4", default-features = false }
 pci-ids = "0.2.6"
-regex = "1.12.2"
+regex = "1.12.4"
 directories = "6.0.0"
-serde = { version = "1.0", features = ["derive"] }
+serde = { version = "1.0.228", features = ["derive"] }
 serde_yaml = "0.9.34"
-inventory = "0.3.21"
-once_cell = "1.21.3"
-anyhow = "1.0.100"
+inventory = "0.3.24"
+once_cell = "1.21.4"
+anyhow = "1.0.102"
 slint = { version = "1.16.1", default-features = false, features = ["compat-1-2", "renderer-winit-skia", "backend-winit"] }
 rfd = "0.17.2"
-tokio = { version = "1.47.1", features = ["rt", "rt-multi-thread", "macros", "process", "fs", "sync"] }
-rustls = { version = "0.23", default-features = false, features = ["ring"] }
-which = "8.0.0"
-shlex = "2.0.0"
-reqwest = { version = "0.13.1", default-features = false, features = ["json", "stream", "rustls-no-provider"] }
+tokio = { version = "1.52.3", features = ["rt", "rt-multi-thread", "macros", "process", "fs", "sync"] }
+rustls = { version = "0.23.40", default-features = false, features = ["ring"] }
+which = "8.0.3"
+shlex = "2.0.1"
+reqwest = { version = "0.13.4", default-features = false, features = ["json", "stream", "rustls-no-provider"] }
 autocompress = { version = "0.6.0", default-features = false, features = ["tokio", "gzip", "xz", "zstd", "rayon"] }
-rand = "0.10.0"
+rand = "0.10.1"
 tokio-util = { version = "0.7.18", features = ["io"] }
-futures-util = { version = "0.3.31", default-features = false }
+futures-util = { version = "0.3.32", default-features = false }
 tokio-tar = "0.3.1"
-libc = { version = "0.2.175", default-features = false }
+libc = { version = "0.2.186", default-features = false }
 strum_macros = "0.28.0"
 strum = "0.28.0"
-open = "5.3.3"
+open = "5.3.5"
+chrono = { version = "0.4.45", features = ["default", "serde"] }
 
 [build]
 rustc-wrapper = "sccache"
