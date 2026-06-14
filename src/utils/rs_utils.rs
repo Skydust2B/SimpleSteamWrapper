@@ -1,5 +1,3 @@
-use std::collections::vec_deque::Iter;
-
 pub trait VecAddons<T> {
     fn find_index<F>(&self, predicate: F) -> Option<i32>
     where F: Fn(&T) -> bool;
