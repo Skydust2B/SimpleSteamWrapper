@@ -14,6 +14,21 @@ where
     fn init_global(component: &T, shared_config: Arc<Mutex<SerializedConfig>>) {
         let app_conf_globals = component.global::<AppConf>();
 
+        app_conf_globals.on_get_global_opt({
+            let shared_serialized_conf = shared_config.clone();
+            move |key| {
+                shared_serialized_conf.lock().unwrap()
+                    .get_global_value_from_string(&key)
+            }
+        });
+        app_conf_globals.on_set_global_opt({
+            let shared_serialized_conf = shared_config.clone();
+            move |key, val| {
+                shared_serialized_conf.lock().unwrap()
+                    .set_global_value_from_string(&key, &val);
+            }
+        });
+
         // Getter
         app_conf_globals.on_get_opt({
             let shared_serialized_conf = shared_config.clone();

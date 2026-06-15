@@ -33,7 +33,7 @@ export component MainGUI inherits Window {
     callback update_wrapper();
     callback save_and_continue();
 
-    in property <string> setting_key: "";
+    in property <string> setting_key: AppConf.get_global_opt("general.gui_trigger_key");
     in-out property <bool> is_setting_key;
     callback enable_setting_key();
 
@@ -194,10 +194,20 @@ export component MainGUI inherits Window {
                     clicked => { save_and_continue(); }
                 }
             }
-            Text {
-                horizontal-alignment: center;
-                vertical-alignment: center;
-                text: "Version: "+ app_version;
+            Rectangle {
+                CheckBox {
+                    x: 0;
+                    text: "Show on game crash";
+                    checked: AppConf.get_global_opt("general.show_on_game_crash") == "true";
+                    toggled => {
+                        AppConf.set_global_opt("general.show_on_game_crash", self.checked ? "true" : "false")
+                    }
+                }
+                Text {
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                    text: "Version: "+ app_version;
+                }
             }
         }
     }

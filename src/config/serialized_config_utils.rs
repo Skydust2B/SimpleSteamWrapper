@@ -95,9 +95,7 @@ impl SerializedConfig {
         self.get_value(&conf_path)
     }
 
-    pub fn get_app_value_as_string(&self, key: &str, is_editing_defaults: bool) -> SharedString {
-        value_to_shared_string(self.get_app_value(&key, is_editing_defaults))
-    }
+
 
     fn get_or_create_app_conf_to_edit(&mut self, app_id: &str) -> &mut Value {
         let mutable_serialized_conf = &mut self.serialized_config;
@@ -129,6 +127,16 @@ impl SerializedConfig {
         self.set_value(&conf_path, val);
     }
 
+    pub fn get_global_value_from_string(&self, key: &str) -> SharedString {
+        value_to_shared_string(self.get_value(&key))
+    }
+    pub fn set_global_value_from_string(&mut self, key: &str, val: &str) {
+        self.set_value(&key, parse_guess(val.to_string()));
+    }
+
+    pub fn get_app_value_as_string(&self, key: &str, is_editing_defaults: bool) -> SharedString {
+        value_to_shared_string(self.get_app_value(&key, is_editing_defaults))
+    }
     pub fn set_app_value_from_string(&mut self, key: &str, val: &str, is_editing_defaults: bool) {
         self.set_app_value(&key, parse_guess(val.to_string()), is_editing_defaults);
     }

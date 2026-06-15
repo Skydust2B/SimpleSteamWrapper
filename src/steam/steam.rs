@@ -6,21 +6,22 @@ use vdf_reader::entry::{Entry, Table};
 use crate::compatibility_tools::compat_tool::{CompatTool};
 use crate::steam::installed_steam_apps::{get_installed_steam_apps, InstalledSteamApp};
 
-const STEAM_VALID_COMPAT_APPIDS: [&str; 14] = [
-    "2230260",
-    "2180100",
-    "1493710",
-    "3658110",
-    "2805730",
-    "2348590",
-    "1887720",
-    "1580130",
-    "1420170",
-    "1245040",
-    "1113280",
-    "1054830",
-    "961940",
-    "858280",
+const STEAM_VALID_COMPAT_APPIDS: [&str; 15] = [
+    "2230260", // Proton Next
+    "2180100", // Proton Hotfix
+    "1493710", // Proton Experimental
+    "4628710", // Proton 11.0
+    "3658110", // Proton 10.0
+    "2805730", // Proton 9.0
+    "2348590", // Proton 8.0
+    "1887720", // Proton 7.0
+    "1580130", // Proton 6.3
+    "1420170", // Proton 5.13
+    "1245040", // Proton 5.0
+    "1113280", // Proton 4.11
+    "1054830", // Proton 4.2
+    "961940", // Proton 3.16
+    "858280", // Proton 3.7
 ];
 
 pub fn read_vdf(path: &PathBuf) -> anyhow::Result<Table> {
@@ -118,10 +119,11 @@ pub fn list_steam_compat_tools() -> Vec<CompatTool> {
     if let Ok(entries) = fs::read_dir(steam_compat_tools_path) {
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.is_dir() {
-                if let Ok(steam_compat_tool) = parse_steam_compat_tool(path) {
-                    results.push(steam_compat_tool);
-                }
+            if !path.is_dir() {
+                continue;
+            }
+            if let Ok(steam_compat_tool) = parse_steam_compat_tool(path) {
+                results.push(steam_compat_tool);
             }
         }
     }

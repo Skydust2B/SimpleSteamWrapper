@@ -14,6 +14,7 @@ pub struct Config {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct General {
     pub gui_trigger_key: String,
+    pub show_on_game_crash: bool
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -31,6 +32,7 @@ impl Config {
         Self {
             general: General {
                 gui_trigger_key: Keycode::LShift.to_string(),
+                show_on_game_crash: false,
             },
             defaults: Options {
                 selected_gpu: "".to_string(),

@@ -48,17 +48,31 @@ async fn main() {
         return;
     }
 
+    let config = GlobalConfig::get();
+
     let device_state = DeviceState::new();
     let keys: Vec<Keycode> = device_state.get_keys();
-    let config_key_code = GlobalConfig::get().general.gui_trigger_key;
-    let parsed_key_code = &Keycode::from_str(&config_key_code).expect("Failed to parse keycode");
+    let parsed_key_code = &Keycode::from_str(&config.general.gui_trigger_key).expect("Failed to parse keycode");
     if keys.contains(&parsed_key_code) { // hold Shift to show GUI
         show_gui();
     }
 
-    if let Some(cfg_compat_tool) = get_compat_tool_from_config() {
-        run_game_process(cfg_compat_tool);
-    } else {
+    let cfg_compat_tool = get_compat_tool_from_config();
+    if cfg_compat_tool.is_none() {
         show_message_dialog("No compatibility tools configured! This will exit");
+        std::process::exit(1);
     }
+    let cfg_compat_tool = cfg_compat_tool.unwrap();
+
+    let exit_status = run_game_process(cfg_compat_tool)
+        .and_then(|status| status.code())
+        .unwrap_or(1);
+
+    info!("Exit code status: {}", exit_status);
+    if config.general.show_on_game_crash {
+        info!("Showing GUI after crash");
+        show_gui();
+    }
+
+    std::process::exit(exit_status);
 }

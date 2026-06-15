@@ -1,4 +1,7 @@
 export global AppConf  {
+    pure callback get_global_opt(key: string) -> string;
+    callback set_global_opt(key: string, value: string);
+
     pure callback get_opt(key: string, editing_defaults: bool) -> string;
     callback set_opt(key: string, value: string, editing_defaults: bool);
 
