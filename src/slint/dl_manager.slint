@@ -1,7 +1,5 @@
 import { ComboBox, CheckBox, VerticalBox, HorizontalBox, SpinBox, Button, ScrollView, ListView, LineEdit, ProgressIndicator } from "std-widgets.slint";
 
-// TODO: If auto-update on, check corresponding update on startup and add a 'last-update' to not spam the check
-
 struct DlAssetRow {
     id: int,
     already_downloaded: bool,
@@ -72,28 +70,20 @@ export component DlManagerGUI inherits Window {
                                 vertical-alignment: center;
                                 text: row.display-name;
                             }
-                            VerticalLayout {
+                            HorizontalLayout {
                                 horizontal-stretch: 0;
                                 spacing: 5px;
-                                HorizontalLayout {
-                                    horizontal-stretch: 0;
-                                    spacing: 5px;
-                                    if row.already_downloaded: Button {
-                                        max-width: self.preferred-width;
-                                        text: "🗑";
-                                        clicked => { delete_compat_tool(idx) }
-                                    }
-                                    Button {
-                                        max-width: self.preferred-width;
-                                        text: row.can_be_updated ? "Update" : "Install";
-                                        clicked => { install_compat_tool(idx) }
-                                        enabled: (!row.already_downloaded || row.can_be_updated) && !download_state.is_downloading;
-                                    }
+                                if row.already_downloaded: Button {
+                                    max-width: self.preferred-width;
+                                    text: "🗑";
+                                    clicked => { delete_compat_tool(idx) }
                                 }
-                                //if row.can_be_updated: CheckBox {
-                                //    horizontal-stretch: 0;
-                                //    text: "Auto-update";
-                                //}
+                                Button {
+                                    max-width: self.preferred-width;
+                                    text: row.can_be_updated ? "Update" : "Install";
+                                    clicked => { install_compat_tool(idx) }
+                                    enabled: (!row.already_downloaded || row.can_be_updated) && !download_state.is_downloading;
+                                }
                             }
                         }
                         if (download_state.is_downloading && idx == download_state.row-id): HorizontalBox {
