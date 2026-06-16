@@ -12,7 +12,7 @@ on:
           - "Major - Incompatible API changes"
 
 env:
-  APP_NAME: "SimpleSteamWrapper"
+  APP_NAME: "Simple-Steam-Wrapper"
   SEMVER_UPDATE: "${{ inputs.semver }}"
 
 jobs:
@@ -24,20 +24,23 @@ jobs:
           - x86_64-unknown-linux-gnu
     
     container:
-      image: "public.ecr.aws/docker/library/rust:1.88.0-alpine3.21"
+      image: "public.ecr.aws/docker/library/rust:1.96.0-slim-trixie"
+
+    env:
+      RUST_MIN_STACK: 16777216
     steps:
       - name: Prepare runner deps
         run: |
-          apk --no-cache add nodejs git bash npm curl jq
+          apt update
+          apt install -y --no-install-recommends nodejs git bash npm curl jq
           npm config set @skydust:registry=https://gitea.skydust.fr/api/packages/skydust/npm/
           npm install -g @skydust/toolkit@latest
 
       - name: Prepare build deps
         run: |
-          apk --no-cache add docker build-base perl clang llvm musl-dev libgcc libstdc++ openssl-libs-static openssl-dev cmake make pkgconfig curl
+          apt install -y --no-install-recommends docker-cli build-essential perl clang libssl-dev cmake make curl pkg-config libfontconfig-dev libx11-dev
           echo "CC=clang" >> $GITEA_ENV
           echo "CXX=clang++" >> $GITEA_ENV
-          cargo install cross --git https://github.com/cross-rs/cross
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -51,21 +54,25 @@ jobs:
           sed -Ei "s|^(version = \")[^\"]*|\1${NEW_VERSION}|" Cargo.toml
           cat Cargo.toml
 
+      - name: Install target
+        run: rustup target add ${{ matrix.target }}
+
       - name: Build
-        run: cross build --release --target ${{ matrix.target }}
+        run: cargo build --release --target ${{ matrix.target }}
 
       - name: Archive binary
         run: |
           OUT_DIR=release/${{ matrix.target }}
           mkdir -p $OUT_DIR
           cp target/${{ matrix.target }}/release/${APP_NAME}* $OUT_DIR/
-
+          
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: christopherhx/gitea-upload-artifact@v4
         with:
-          name: ${{ matrix.target }}
-          path: release/${{ matrix.target }}
-  
+          name: release
+          path: "release"
+          retention-days: 1
+
   release:
     name: Validate release
     needs: build
@@ -83,10 +90,11 @@ jobs:
     needs: release
     runs-on: skydust-runner
     steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
+      - name: Download artifact
+        uses: christopherhx/gitea-download-artifact@v4
         with:
-          path: dist
+          name: release
+          path: "release"
 
       - name: Getting version
         uses: https://gitea.skydust.fr/actions/get-version@v1
@@ -94,6 +102,6 @@ jobs:
       - name: Create Release
         uses: https://gitea.com/actions/gitea-release-action
         with:
-          files: dist/**/*
+          files: release/**/*
           name: "v${{ env.NEW_VERSION }}"
           token: ${{ secrets.GITEA_SERVER_URL }}
