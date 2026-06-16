@@ -64,7 +64,7 @@ jobs:
         run: |
           OUT_DIR=release/${{ matrix.target }}
           mkdir -p $OUT_DIR
-          cp target/${{ matrix.target }}/release/${APP_NAME}* $OUT_DIR/
+          cp target/${{ matrix.target }}/release/${APP_NAME} $OUT_DIR/${APP_NAME}-${{ matrix.target }}
           
       - name: Upload artifact
         uses: christopherhx/gitea-upload-artifact@v4
@@ -100,7 +100,7 @@ jobs:
         uses: https://gitea.skydust.fr/actions/get-version@v1
 
       - name: Create Release
-        uses: https://gitea.com/actions/gitea-release-action
+        uses: https://gitea.com/actions/gitea-release-action@v1
         with:
           files: release/**/*
           name: "v${{ env.NEW_VERSION }}"
