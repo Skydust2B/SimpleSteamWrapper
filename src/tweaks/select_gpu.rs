@@ -2,7 +2,7 @@ use std::process::Command;
 use log::{info, warn};
 use tweaks_macro::tweak;
 use crate::gpu_tools::gpu::{GPU};
-use crate::gpu_tools::nvidia_gpu::get_nvidia_gpu_uuid;
+use crate::gpu_tools::nvidia_gpu::get_nvidia_gpu_data;
 
 #[tweak(name = "gpu_tools", priority=0)]
 pub fn run(process: &mut Command, _: &mut Vec<String>) {
@@ -27,18 +27,6 @@ pub fn get_vulkan_gpu_env_vars(gpu: &GPU) -> Vec<(String,String)> {
         gpu.as_formatted_id()
     ));
 
-    // DXVK device selection
-    env_vars.push((
-        "DXVK_FILTER_DEVICE_NAME".to_string(),
-        gpu.name.clone()
-    ));
-
-    // DX12 device selection
-    env_vars.push((
-        "VKD3D_FILTER_DEVICE_NAME".to_string(),
-        gpu.name.clone()
-    ));
-
     env_vars
 }
 
@@ -46,11 +34,11 @@ pub fn get_nvidia_gpu_env_vars(gpu: &GPU) -> Vec<(String,String)> {
     let mut env_vars = Vec::<(String, String)>::new();
 
     info!("Retrieving NVIDIA GPU UUID");
-    if let Some(uuid) = get_nvidia_gpu_uuid(gpu).ok() {
-        info!("Found NVIDIA GPU UUID: {}", uuid);
+    if let Some(nvidia_gpu) = get_nvidia_gpu_data(gpu).ok() {
+        info!("Found NVIDIA GPU UUID: {}", nvidia_gpu.uuid);
         env_vars.push((
             "CUDA_VISIBLE_DEVICES".to_string(), // For cuda application, official var
-            uuid.clone()
+            nvidia_gpu.uuid.clone()
         ));
 
         env_vars.push((
@@ -63,7 +51,7 @@ pub fn get_nvidia_gpu_env_vars(gpu: &GPU) -> Vec<(String,String)> {
         ));
         env_vars.push((
             "__NV_PRIME_RENDER_OFFLOAD_PROVIDER".to_string(), // Isn't documented to work for wayland and isn't supposed to accept UUIDs, but some rumors had them supposedly work anyway
-            uuid
+            nvidia_gpu.uuid
         ));
     } else {
         warn!("GPU UUID not found, is the driver working ?");

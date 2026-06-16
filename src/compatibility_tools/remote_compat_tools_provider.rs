@@ -58,7 +58,7 @@ impl RemoteCompatToolsProvider {
         if !force_refresh {
             let assets_cache = Self::get_cache(self.remote_path.to_string());
 
-            if let Some (assets_cache) = assets_cache {
+            if let Some(assets_cache) = assets_cache {
                 return Ok(assets_cache)
             }
         }

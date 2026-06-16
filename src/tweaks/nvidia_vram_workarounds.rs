@@ -1,13 +1,11 @@
 use std::process::Command;
-use log::{info};
 use tweaks_macro::tweak;
-use crate::gpu_tools::gpu::{get_gpu_from_config, GPU};
-use crate::gpu_tools::nvidia_gpu::get_nvidia_gpu_uuid;
+use crate::gpu_tools::gpu::{GPU};
+use crate::gpu_tools::nvidia_gpu::get_nvidia_gpu_data;
 
 #[tweak(name = "nvidia_vram_workarounds", priority=0)]
 pub fn run(process: &mut Command, _: &mut Vec<String>) {
-    let gpu_to_set = &get_gpu_from_config();
-    info!("Using selected GPU: {}", gpu_to_set.full_name);
+    let gpu = GPU::from_config();
 
     let mut env_vars = Vec::<(String, String)>::new();
 
@@ -17,11 +15,15 @@ pub fn run(process: &mut Command, _: &mut Vec<String>) {
         "no_upload_hvv".to_string()
     ));
 
-    // DXVK soft VRAM limit
-    env_vars.push((
-        "DXVK_CONFIG".to_string(),
-        "dxgi.maxDeviceMemory = 6144;".to_string()
-    ));
+    if let Some(nvidia_gpu) = get_nvidia_gpu_data(&gpu).ok() {
+        let soft_vram_limit = ((nvidia_gpu.total_memory_mb as f32) * 0.9).floor() as i32;
+
+        // DXVK soft VRAM limit
+        env_vars.push((
+            "DXVK_CONFIG".to_string(),
+            format!("dxgi.maxDeviceMemory = {};", soft_vram_limit)
+        ));
+    }
 
     process.envs(env_vars);
 }

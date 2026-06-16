@@ -73,21 +73,30 @@ export component MainGUI inherits Window {
                     }
                 }
 
-                if current_gpu_vendor == GUIGPUVendor.nvidia: HorizontalLayout {
-                    nvapi := CheckBox {
-                        text: "Use NVAPI extensions";
-                        checked: AppConf.get_opt_bool("enabled_tweaks.proton_nvapi");
-                        toggled => {
-                            if (!self.checked) {
-                                AppConf.set_opt_bool("enabled_tweaks.proton_nvapi_vkreflex", self.checked);
-                            }
-                            AppConf.set_opt_bool("enabled_tweaks.proton_nvapi", self.checked);
-                        }
+                if current_gpu_vendor == GUIGPUVendor.nvidia: VerticalBox {
+                    alignment: start;
+                    padding: 0;
+                    CheckBox {
+                        text: "Nvidia VRAM Workaround (Apply env vars to limit freezes)";
+                        checked: AppConf.get_opt_bool("enabled_tweaks.nvidia_vram_workarounds");
+                        toggled => { AppConf.set_opt_bool("enabled_tweaks.nvidia_vram_workarounds", self.checked); }
                     }
-                    if (nvapi.checked): CheckBox {
-                        text: "VKReflex";
-                        checked: AppConf.get_opt_bool("enabled_tweaks.proton_nvapi_vkreflex");
-                        toggled => { AppConf.set_opt_bool("enabled_tweaks.proton_nvapi_vkreflex", self.checked); }
+                    HorizontalLayout {
+                        nvapi := CheckBox {
+                            text: "Use NVAPI extensions";
+                            checked: AppConf.get_opt_bool("enabled_tweaks.proton_nvapi");
+                            toggled => {
+                                if (!self.checked) {
+                                    AppConf.set_opt_bool("enabled_tweaks.proton_nvapi_vkreflex", self.checked);
+                                }
+                                AppConf.set_opt_bool("enabled_tweaks.proton_nvapi", self.checked);
+                            }
+                        }
+                        if (nvapi.checked): CheckBox {
+                            text: "VKReflex";
+                            checked: AppConf.get_opt_bool("enabled_tweaks.proton_nvapi_vkreflex");
+                            toggled => { AppConf.set_opt_bool("enabled_tweaks.proton_nvapi_vkreflex", self.checked); }
+                        }
                     }
                 }
 
