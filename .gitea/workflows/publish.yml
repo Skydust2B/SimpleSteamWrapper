@@ -109,4 +109,4 @@ jobs:
         with:
           files: release/**/*
           name: "v${{ env.NEW_VERSION }}"
-          token: ${{ secrets.GITEA_SERVER_URL }}
+          token: ${{ secrets.CI_TOKEN }}
