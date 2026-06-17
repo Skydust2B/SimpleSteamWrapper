@@ -69,7 +69,7 @@ async fn main() {
         .unwrap_or(1);
 
     info!("Exit code status: {}", exit_status);
-    if config.general.show_on_game_crash {
+    if exit_status != 0 && config.general.show_on_game_crash {
         info!("Showing GUI after crash");
         show_gui();
     }
