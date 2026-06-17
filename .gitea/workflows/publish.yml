@@ -109,5 +109,5 @@ jobs:
         with:
           files: release/**/*
           name: "v${{ env.NEW_VERSION }}"
-          token: ${{ secrets.CI_TOKEN 
+          token: "${{ secrets.CI_TOKEN }}"
           tag_name: "v${{ env.NEW_VERSION }}"
