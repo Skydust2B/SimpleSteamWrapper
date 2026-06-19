@@ -43,7 +43,7 @@ jobs:
           echo "CXX=clang++" >> $GITEA_ENV
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Getting version
         uses: https://gitea.skydust.fr/actions/get-version@v1
@@ -91,7 +91,7 @@ jobs:
     runs-on: skydust-runner
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: '0'
           
