@@ -25,6 +25,9 @@ export component MainGUI inherits Window {
 
     in property <string> game_app_id: "0";
 
+    in-out property <int> selected_runtime;
+    in property <[string]> runtimes;
+
     pure callback show_download_runner();
     pure callback show_prefix_options();
 
@@ -54,6 +57,19 @@ export component MainGUI inherits Window {
                     Button {
                         text: "↓";
                         clicked => { show_download_runner(); }
+                    }
+                }
+
+                HorizontalLayout {
+                    spacing: 10px;
+                    Text {
+                        vertical-alignment: center;
+                        text: "Runtime (Choose sniper if unsure)";
+                     }
+                    ComboBox {
+                        model: root.runtimes;
+                        current-index <=> selected_runtime;
+                        selected(current-value) => { AppConf.set_opt_str("runtime", current-value) }
                     }
                 }
 

@@ -4,8 +4,8 @@ use crate::runner::game_process_wrapper::{get_run_verb, RunVerb};
 use crate::steam::steam::get_steam_runtime_app;
 
 #[derive(Debug, EnumString, VariantArray, Serialize, Deserialize, Clone, PartialEq, Display)]
-#[strum(serialize_all = "lowercase")]
 pub enum Runtime {
+    None,
     SteamScout,
     SteamSoldier,
     SteamSniper
@@ -17,22 +17,26 @@ impl Runtime {
 
         let runtime_path = match self {
             Runtime::SteamScout => {
-                get_steam_runtime_app(self.clone())
+                Some(get_steam_runtime_app(self.clone())
                     .expect("Unable to get runtime entrypoint")
-                    .path.join("_v2-entry-point")
+                    .path.join("_v2-entry-point"))
             }
             Runtime::SteamSoldier => {
-                get_steam_runtime_app(self.clone())
+                Some(get_steam_runtime_app(self.clone())
                     .expect("Unable to get runtime entrypoint")
-                    .path.join("_v2-entry-point")
+                    .path.join("_v2-entry-point"))
             }
             Runtime::SteamSniper => {
-                get_steam_runtime_app(self.clone())
+                Some(get_steam_runtime_app(self.clone())
                     .expect("Unable to get runtime entrypoint")
-                    .path.join("_v2-entry-point")
-            }
+                    .path.join("_v2-entry-point"))
+            },
+            Runtime::None => None,
         };
 
-        format!("{} --verb={} --", runtime_path.to_str().unwrap(), runtime_verb)
+        if let Some(runtime_path) = runtime_path {
+            return format!("{} --verb={} --", runtime_path.to_str().unwrap(), runtime_verb);
+        }
+        "".to_string()
     }
 }

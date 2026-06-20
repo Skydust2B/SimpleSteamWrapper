@@ -1,8 +1,9 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 use slint::{ComponentHandle, ModelRc, SharedString, VecModel, Weak};
+use crate::utils::find_index::FindIndex;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ClonableModel<T> {
     elements: Rc<RefCell<Vec<T>>>
 }
@@ -33,12 +34,24 @@ impl<T: Clone> ClonableModel<T> {
     }
 }
 
+impl<T> FindIndex<T> for ClonableModel<T> {
+    fn find_index<F>(&self, predicate: F) -> Option<i32>
+    where
+        F: Fn(&T) -> bool
+    {
+        self.elements.borrow()
+            .iter()
+            .position(predicate)
+            .and_then(|idx| i32::try_from(idx).ok())
+    }
+}
+
 pub trait WeakUtils<T> {
     fn upgrade_and_run<F>(&self, run: F)
     where F: FnOnce(T);
 }
 
-impl<T> WeakUtils<T> for Weak<T>where
+impl<T> WeakUtils<T> for Weak<T> where
     T: ComponentHandle {
     fn upgrade_and_run<F>(&self, run: F)
     where

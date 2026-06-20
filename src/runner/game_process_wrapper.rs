@@ -64,7 +64,6 @@ pub fn run_game_process(compat_tool: CompatTool) -> Option<std::process::ExitSta
     let mut wrapper_prepared_command = String::new();
 
     let run_verb = get_run_verb().unwrap_or(RunVerb::Run);
-    let passed_arguments = env::args().skip(2).collect::<Vec<String>>();
 
     if run_verb == RunVerb::Waitforexitandrun && prepared_command.command_prefixes.len() > 0{
         wrapper_prepared_command.push_str(
@@ -77,7 +76,7 @@ pub fn run_game_process(compat_tool: CompatTool) -> Option<std::process::ExitSta
         runtime.get_runtime_entrypoint(),
         compat_tool.path.to_string(),
         run_verb.to_string(),
-        to_quoted_string(passed_arguments)));
+        to_quoted_string(prepared_command.arguments)));
 
     info!("Running command: {}", wrapper_prepared_command);
 

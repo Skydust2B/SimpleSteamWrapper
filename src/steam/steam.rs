@@ -32,7 +32,7 @@ pub fn read_vdf(path: &PathBuf) -> anyhow::Result<Table> {
 }
 
 pub fn get_steam_path() -> Option<PathBuf> {
-    let home = std::env::var_os("HOME")?;
+    let home = env::var_os("HOME")?;
     let base = PathBuf::from(home);
     // Common Linux locations (the first usually exists)
     let candidates = [
@@ -52,7 +52,7 @@ pub fn get_steam_runtime_app(runtime: Runtime) -> Option<InstalledSteamApp> {
         Runtime::SteamScout => "1070560",
         Runtime::SteamSoldier => "1391110",
         Runtime::SteamSniper => "1628350",
-        //_ => panic!("Not a steam runtime")
+        _ => panic!("{} is not a steam runtime", runtime)
     };
     if let Some(app) = steam_apps.get(app_id) {
         return Some(app.clone());
