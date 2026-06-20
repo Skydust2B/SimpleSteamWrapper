@@ -2,9 +2,10 @@ use std::process::Command;
 use tweaks_macro::tweak;
 use crate::gpu_tools::gpu::{GPU};
 use crate::gpu_tools::nvidia_gpu::get_nvidia_gpu_data;
+use crate::tweak_collector::PreparedCommand;
 
-#[tweak(name = "nvidia_vram_workarounds", priority=0)]
-pub fn run(process: &mut Command, _: &mut Vec<String>) {
+#[tweak(name = "nvidia_vram_workarounds")]
+pub fn run(process: &mut Command, _: &mut PreparedCommand) {
     let gpu = GPU::from_config();
 
     let mut env_vars = Vec::<(String, String)>::new();

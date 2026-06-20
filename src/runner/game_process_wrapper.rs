@@ -1,5 +1,4 @@
 use std::{env};
-use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::str::FromStr;
 use log::info;
@@ -9,9 +8,7 @@ use crate::compatibility_tools::app_prefix::AppPrefix;
 use crate::config::config::{Config};
 use crate::config::global_config::{GlobalConfig};
 use crate::compatibility_tools::compat_tool::{CompatTool};
-use crate::gui::dialog::show_message_dialog;
-use crate::steam::steam::get_steam_sniper_runtime;
-use crate::tweak_collector::{list_tweaks, Tweak};
+use crate::tweak_collector::{list_tweaks, PreparedCommand, Tweak};
 
 #[derive(Debug, EnumString, VariantArray, Clone, PartialEq, Display)]
 #[strum(serialize_all = "lowercase")]
@@ -33,7 +30,11 @@ pub fn run_game_process(compat_tool: CompatTool) -> Option<std::process::ExitSta
     if env::args().nth(1).is_none() {
         return None;
     }
-    let mut prepared_command: Vec<String> = Vec::new();
+
+    let mut prepared_command: PreparedCommand = PreparedCommand {
+        command_prefixes: Vec::new(),
+        arguments: env::args().skip(2).collect::<Vec<String>>()
+    };
 
     let mut process = Command::new("sh");
     process
@@ -53,17 +54,10 @@ pub fn run_game_process(compat_tool: CompatTool) -> Option<std::process::ExitSta
 
     iterator_tweaks.iter().for_each(|tweak| {
         if *app_config.enabled_tweaks.get(tweak.name).unwrap_or(&false) {
-            info!("Running tweak \"{}\"", tweak.name);
+            info!("Running tweak \"{}\" (Priority: {})", tweak.name, tweak.priority);
             (tweak.execute)(&mut process, &mut prepared_command);
         }
     });
-
-    let steam_runtime = get_steam_sniper_runtime();
-    if steam_runtime.is_none() {
-        show_message_dialog("Couldn't find the steam sniper runtime, it is required to run proton games through steam.");
-        return None;
-    }
-    let steam_runtime_run_path = PathBuf::from(steam_runtime.unwrap().path).join("_v2-entry-point");
 
     AppPrefix::from_env(); // Used to validate proton env
 
@@ -72,19 +66,18 @@ pub fn run_game_process(compat_tool: CompatTool) -> Option<std::process::ExitSta
     let run_verb = get_run_verb().unwrap_or(RunVerb::Run);
     let passed_arguments = env::args().skip(2).collect::<Vec<String>>();
 
-    if run_verb == RunVerb::Waitforexitandrun {
-        if prepared_command.len() > 0 {
-            wrapper_prepared_command = format!("{} ", to_quoted_string(prepared_command));
-        }
+    if run_verb == RunVerb::Waitforexitandrun && prepared_command.command_prefixes.len() > 0{
+        wrapper_prepared_command.push_str(
+            &format!("{} ", to_quoted_string(prepared_command.command_prefixes)
+            ));
     }
 
-    wrapper_prepared_command = format!("{}\"{}\" --verb={} -- \"{}\" {} {}",
-        wrapper_prepared_command,
-        steam_runtime_run_path.to_str().unwrap(),
-        run_verb.to_string(),
+    let runtime = app_config.clone().runtime;
+    wrapper_prepared_command.push_str(&format!("{} {} {} {}",
+        runtime.get_runtime_entrypoint(),
         compat_tool.path.to_string(),
         run_verb.to_string(),
-        to_quoted_string(passed_arguments));
+        to_quoted_string(passed_arguments)));
 
     info!("Running command: {}", wrapper_prepared_command);
 

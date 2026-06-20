@@ -2,6 +2,7 @@ use std::process::Command;
 use serde::{Deserialize, Serialize};
 use tweaks_macro::tweak;
 use crate::config::global_config::{GlobalConfig};
+use crate::tweak_collector::PreparedCommand;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GamescopeSettings {
@@ -14,7 +15,7 @@ pub struct GamescopeSettings {
 }
 
 #[tweak(name = "gamescope", priority = 100)]
-pub fn run(_: &mut Command, prepared_command: &mut Vec<String>) {
+pub fn run(_: &mut Command, prepared_command: &mut PreparedCommand) {
     let mut gamescope_cmd: Vec<String> = vec!["gamescope".to_string()];
 
     let settings = GlobalConfig::get_app_options().gamescope_settings;
@@ -46,6 +47,7 @@ pub fn run(_: &mut Command, prepared_command: &mut Vec<String>) {
         .iter()
         .for_each(|v| {
             prepared_command
+                .command_prefixes
                 .insert(index, v.to_string());
             index = index + 1;
         });

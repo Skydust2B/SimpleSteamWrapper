@@ -5,6 +5,7 @@ use anyhow::{anyhow, Context};
 use vdf_reader::entry::{Entry, Table};
 use crate::compatibility_tools::compat_tool::{CompatTool};
 use crate::steam::installed_steam_apps::{get_installed_steam_apps, InstalledSteamApp};
+use crate::runner::runtime::Runtime;
 
 const STEAM_VALID_COMPAT_APPIDS: [&str; 15] = [
     "2230260", // Proton Next
@@ -45,9 +46,15 @@ pub fn get_steam_path() -> Option<PathBuf> {
     path
 }
 
-pub fn get_steam_sniper_runtime() -> Option<InstalledSteamApp> {
+pub fn get_steam_runtime_app(runtime: Runtime) -> Option<InstalledSteamApp> {
     let steam_apps = get_installed_steam_apps();
-    if let Some(app) = steam_apps.get("1628350") {
+    let app_id = match runtime {
+        Runtime::SteamScout => "1070560",
+        Runtime::SteamSoldier => "1391110",
+        Runtime::SteamSniper => "1628350",
+        //_ => panic!("Not a steam runtime")
+    };
+    if let Some(app) = steam_apps.get(app_id) {
         return Some(app.clone());
     }
     None

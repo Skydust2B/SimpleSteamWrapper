@@ -3,6 +3,7 @@ use device_query::Keycode;
 use serde::{Deserialize, Serialize};
 use crate::tweaks::dxvk_hud_mode::DXVKHUDSettings;
 use crate::tweaks::gamescope::GamescopeSettings;
+use crate::runner::runtime::Runtime;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Config {
@@ -21,6 +22,7 @@ pub struct General {
 pub struct Options {
     pub selected_gpu: String,
     pub compat_tool: String,
+    pub runtime: Runtime,
     pub gamescope_settings: GamescopeSettings,
     pub dxvk_hud_settings: DXVKHUDSettings,
     pub enabled_tweaks: HashMap<String, bool>,
@@ -37,6 +39,7 @@ impl Config {
             defaults: Options {
                 selected_gpu: "".to_string(),
                 enabled_tweaks: HashMap::new(),
+                runtime: Runtime::SteamSniper, // Should use sniper by default
                 compat_tool: "".to_string(),
                 gamescope_settings: GamescopeSettings {
                     forced_width: 1920,
