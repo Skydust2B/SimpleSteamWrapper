@@ -12,7 +12,7 @@ pub enum Runtime {
 }
 
 impl Runtime {
-    pub fn get_runtime_entrypoint(&self) -> String {
+    pub fn get_runtime_entrypoint(&self) -> Vec<String> {
         let runtime_verb = get_run_verb().unwrap_or(RunVerb::Run);
 
         let runtime_path = match self {
@@ -35,8 +35,12 @@ impl Runtime {
         };
 
         if let Some(runtime_path) = runtime_path {
-            return format!("{} --verb={} --", runtime_path.to_str().unwrap(), runtime_verb);
+            return vec![
+                runtime_path.to_str().unwrap().to_string(),
+                format!("--verb={}", runtime_verb),
+                "--".to_string()
+            ]
         }
-        "".to_string()
+        Vec::new()
     }
 }

@@ -3,7 +3,15 @@ use shlex::split;
 use which::which;
 
 pub fn to_quoted_string(args: Vec<String>) -> String {
-    format!("\"{}\"", args.iter().map(|arg| arg.replace("\"", "\\\"")).collect::<Vec<String>>().join("\" \""))
+    format!("\"{}\"", args.iter().map(|arg| {
+                let val = if arg.starts_with('"') && arg.ends_with('"') {
+                    arg[1..arg.len() - 1].to_string()
+                } else {
+                    arg.to_string()
+                };
+
+                val.replace("\"", "\\\"")
+            }).collect::<Vec<String>>().join("\" \""))
 }
 
 pub fn find_terminal_emulator() -> Option<String> {

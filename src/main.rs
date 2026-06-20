@@ -82,6 +82,7 @@ async fn main() {
                 && run_verb == Some(RunVerb::Waitforexitandrun) {
                 info!("Showing GUI after crash");
                 if show_main_gui() {
+                    GlobalConfig::load();
                     continue;
                 }
             }

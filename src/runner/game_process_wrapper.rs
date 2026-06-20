@@ -61,24 +61,27 @@ pub fn run_game_process(compat_tool: CompatTool) -> Option<std::process::ExitSta
 
     AppPrefix::from_env(); // Used to validate proton env
 
-    let mut wrapper_prepared_command = String::new();
+    let mut wrapper_prepared_command = Vec::new();
 
     let run_verb = get_run_verb().unwrap_or(RunVerb::Run);
 
     if run_verb == RunVerb::Waitforexitandrun && prepared_command.command_prefixes.len() > 0{
-        wrapper_prepared_command.push_str(
-            &format!("{} ", to_quoted_string(prepared_command.command_prefixes)
-            ));
+        wrapper_prepared_command.extend_from_slice(prepared_command.command_prefixes.as_slice());
     }
 
     let runtime = app_config.clone().runtime;
-    wrapper_prepared_command.push_str(&format!("{} {} {} {}",
-        runtime.get_runtime_entrypoint(),
-        compat_tool.path.to_string(),
-        run_verb.to_string(),
-        to_quoted_string(prepared_command.arguments)));
+    wrapper_prepared_command.extend_from_slice(runtime.get_runtime_entrypoint().as_slice());
 
-    info!("Running command: {}", wrapper_prepared_command);
+    wrapper_prepared_command.extend_from_slice(&[
+        compat_tool.path.to_string(),
+        run_verb.to_string()
+    ]);
+
+    wrapper_prepared_command.extend_from_slice(prepared_command.arguments.as_slice());
+
+    let wrapper_command_as_str = to_quoted_string(wrapper_prepared_command);
+
+    info!("Running command: {}", wrapper_command_as_str);
 
     info!("With environment variables:");
     process.get_envs().for_each(|(key, val)|  {
@@ -86,7 +89,7 @@ pub fn run_game_process(compat_tool: CompatTool) -> Option<std::process::ExitSta
     });
 
     let status = process
-        .arg(wrapper_prepared_command)
+        .arg(wrapper_command_as_str)
         .status()
         .expect("Failed to spawn child");
 
