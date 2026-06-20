@@ -132,6 +132,7 @@ impl GlobalConfig {
                 .and_then(|v| Some(v.to_string()))
                 .unwrap_or(String::new());
 
+            error!("Couldn't read config: {}", error);
             show_message_dialog(&format!("Couldn't read the config file, some values might be wrong\n\n{}", error));
             slint::run_event_loop().unwrap();
             std::process::exit(1);

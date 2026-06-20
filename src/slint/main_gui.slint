@@ -213,7 +213,7 @@ export component MainGUI inherits Window {
                         enable_setting_key();
                     }
                 }
-                Button {
+                if (game_app_id.is-empty): Button {
                     text: "Update Wrapper";
                     clicked => { update_wrapper(); }
                 }

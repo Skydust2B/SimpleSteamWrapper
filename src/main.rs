@@ -20,7 +20,7 @@ use log::info;
 use crate::compatibility_tools::compat_tool::get_compat_tool_from_config;
 use crate::config::global_config::GlobalConfig;
 use crate::gui::dialog::show_message_dialog;
-use crate::gui::main_gui::show_gui;
+use crate::gui::main_gui::{show_main_gui};
 use crate::runner::game_process_wrapper::{get_run_verb, run_game_process, RunVerb};
 use crate::install::install::check_install;
 
@@ -44,7 +44,7 @@ async fn main() {
     if !is_in_steam_env {
         info!("Outside steam, running GUI");
         check_install();
-        show_gui();
+        show_main_gui();
         return;
     }
 
@@ -53,8 +53,11 @@ async fn main() {
     let device_state = DeviceState::new();
     let keys: Vec<Keycode> = device_state.get_keys();
     let parsed_key_code = &Keycode::from_str(&config.general.gui_trigger_key).expect("Failed to parse keycode");
-    if keys.contains(&parsed_key_code) { // hold Shift to show GUI
-        show_gui();
+    if keys.contains(&parsed_key_code) { // hold trigger key to show GUI
+        let should_continue = show_main_gui();
+        if !should_continue {
+            return;
+        }
     }
 
     let cfg_compat_tool = get_compat_tool_from_config();
@@ -65,18 +68,25 @@ async fn main() {
     }
     let cfg_compat_tool = cfg_compat_tool.unwrap();
 
-    let exit_status = run_game_process(cfg_compat_tool)
-        .and_then(|status| status.code())
-        .unwrap_or(1);
+    let run_game_loop = || {
+        loop {
+            let exit_status = run_game_process(cfg_compat_tool.clone())
+                .and_then(|status| status.code())
+                .unwrap_or(1);
 
-    let run_verb = get_run_verb();
-    info!("Exit code status: {}", exit_status);
-    if exit_status != 0
-        && config.general.show_on_game_crash
-        && run_verb == Some(RunVerb::Waitforexitandrun) {
-        info!("Showing GUI after crash");
-        show_gui();
-    }
+            let run_verb = get_run_verb();
+            info!("Game exit code status: {}", exit_status);
 
-    std::process::exit(exit_status);
+            if exit_status != 0
+                && config.general.show_on_game_crash
+                && run_verb == Some(RunVerb::Waitforexitandrun) {
+                info!("Showing GUI after crash");
+                if show_main_gui() {
+                    continue;
+                }
+            }
+            return exit_status;
+        }
+    };
+    std::process::exit(run_game_loop());
 }

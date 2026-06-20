@@ -1,6 +1,5 @@
 use crate::gui::globals::global_init_trait::ComponentInitExt;
 use std::cell::RefCell;
-use std::process;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -105,7 +104,7 @@ async fn wait_for_key_loop(window: Weak<MainGUI>, shared_config: Arc<Mutex<Seria
     }
 }
 
-pub fn show_gui() {
+pub fn show_main_gui() -> bool {
     let _ = slint::set_xdg_app_id("fr.Skydust.SimpleSteamWrapper");
     let window = MainGUI::new().expect("Couldn't create window");
 
@@ -235,7 +234,5 @@ pub fn show_gui() {
 
     let _ = window.run().unwrap();
 
-    if !*should_continue.borrow() {
-        process::exit(0);
-    }
+    *should_continue.borrow()
 }
