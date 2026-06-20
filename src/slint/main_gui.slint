@@ -154,16 +154,19 @@ export component MainGUI inherits Window {
                     toggled => { AppConf.set_opt_bool("enabled_tweaks.mangohud", self.checked); }
                 }
 
-                dxvk_hud_mode := CheckBox {
-                    text: "DXVK Hud Mode";
-                    checked: AppConf.get_opt_bool("enabled_tweaks.dxvk_hud_mode");
-                    toggled => { AppConf.set_opt_bool("enabled_tweaks.dxvk_hud_mode", self.checked); }
-                }
+                HorizontalLayout {
+                    spacing: 10px;
+                    dxvk_hud_mode := CheckBox {
+                        text: "DXVK Hud Mode";
+                        checked: AppConf.get_opt_bool("enabled_tweaks.dxvk_hud_mode");
+                        toggled => { AppConf.set_opt_bool("enabled_tweaks.dxvk_hud_mode", self.checked); }
+                    }
 
-                if(dxvk_hud_mode.checked): ComboBox {
-                    model: ["compiler","devinfo","fps","full","memory","gpuload","drawcalls","frametimes"];
-                    current-value: AppConf.get_opt_str("dxvk_hud_settings.mode");
-                    selected(current-value) => { AppConf.set_opt_str("dxvk_hud_settings.mode", current-value) }
+                    if(dxvk_hud_mode.checked): ComboBox {
+                        model: ["compiler","devinfo","fps","full","memory","gpuload","drawcalls","frametimes"];
+                        current-value: AppConf.get_opt_str("dxvk_hud_settings.mode");
+                        selected(current-value) => { AppConf.set_opt_str("dxvk_hud_settings.mode", current-value) }
+                    }
                 }
 
                 custom_env_vars := CheckBox {

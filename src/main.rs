@@ -60,6 +60,7 @@ async fn main() {
     let cfg_compat_tool = get_compat_tool_from_config();
     if cfg_compat_tool.is_none() {
         show_message_dialog("No compatibility tools configured! This will exit");
+        slint::run_event_loop().unwrap();
         std::process::exit(1);
     }
     let cfg_compat_tool = cfg_compat_tool.unwrap();
