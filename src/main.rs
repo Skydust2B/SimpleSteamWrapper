@@ -21,7 +21,7 @@ use crate::compatibility_tools::compat_tool::get_compat_tool_from_config;
 use crate::config::global_config::GlobalConfig;
 use crate::gui::dialog::show_message_dialog;
 use crate::gui::main_gui::show_gui;
-use crate::runner::game_process_wrapper::run_game_process;
+use crate::runner::game_process_wrapper::{get_run_verb, run_game_process, RunVerb};
 use crate::install::install::check_install;
 
 slint::include_modules!();
@@ -68,8 +68,11 @@ async fn main() {
         .and_then(|status| status.code())
         .unwrap_or(1);
 
+    let run_verb = get_run_verb();
     info!("Exit code status: {}", exit_status);
-    if exit_status != 0 && config.general.show_on_game_crash {
+    if exit_status != 0
+        && config.general.show_on_game_crash
+        && run_verb == Some(RunVerb::Waitforexitandrun) {
         info!("Showing GUI after crash");
         show_gui();
     }

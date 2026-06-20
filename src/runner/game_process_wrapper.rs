@@ -15,12 +15,12 @@ use crate::tweak_collector::{list_tweaks, Tweak};
 
 #[derive(Debug, EnumString, VariantArray, Clone, PartialEq, Display)]
 #[strum(serialize_all = "lowercase")]
-enum RunVerb {
+pub enum RunVerb {
     Run,
     Waitforexitandrun
 }
 
-fn get_run_verb() -> Option<RunVerb> {
+pub fn get_run_verb() -> Option<RunVerb> {
     if let Some(verb) = env::args().nth(1) {
         if let Ok(parsed) = RunVerb::from_str(&verb) {
             return Some(parsed);
