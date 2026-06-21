@@ -89,7 +89,7 @@ export component MainGUI inherits Window {
                     alignment: start;
                     padding: 0;
                     CheckBox {
-                        text: "Nvidia VRAM Workaround (Apply env vars to limit freezes)";
+                        text: "Nvidia VRAM Workaround (Can limit freezes on Nvidia GPUs)";
                         checked: AppConf.get_opt_bool("enabled_tweaks.nvidia_vram_workarounds");
                         toggled => { AppConf.set_opt_bool("enabled_tweaks.nvidia_vram_workarounds", self.checked); }
                     }
@@ -149,7 +149,11 @@ export component MainGUI inherits Window {
                     checked: AppConf.get_opt_bool("enabled_tweaks.mangohud");
                     toggled => { AppConf.set_opt_bool("enabled_tweaks.mangohud", self.checked); }
                 }
-
+                CheckBox {
+                    text: "Disable DX12 DXR (Raytracing)";
+                    checked: AppConf.get_opt_bool("enabled_tweaks.no_dx12_dxr");
+                    toggled => { AppConf.set_opt_bool("enabled_tweaks.no_dx12_dxr", self.checked); }
+                }
                 HorizontalLayout {
                     spacing: 10px;
                     dxvk_hud_mode := CheckBox {

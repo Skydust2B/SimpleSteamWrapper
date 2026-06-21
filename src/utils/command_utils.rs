@@ -1,4 +1,6 @@
+use std::process::Command;
 use log::{warn};
+use serde::de::Unexpected::Str;
 use shlex::split;
 use which::which;
 
@@ -58,4 +60,39 @@ pub fn parse_cmdline(input: &str) -> ParsedCmd {
     let args: Vec<String> = iter.collect();
 
     ParsedCmd { env: envs, progname, args }
+}
+
+pub trait UpdateEnvVar {
+    fn update_env_var<F>(&mut self, var: &str, updater: F)
+    where
+        F: Fn(Option<String>) -> String;
+
+    fn add_parameter_to_var(&mut self, separator: &str, var: &str, value: &str);
+}
+
+impl UpdateEnvVar for Command {
+    fn update_env_var<F>(&mut self, var: &str, updater: F)
+    where
+        F: Fn(Option<String>) -> String
+    {
+        let current_value = self.get_envs()
+            .find(|(key, _)| key.to_str() == Some(var))
+            .and_then(|(_, value)| value)
+            .and_then(|value| value.to_str())
+            .map(String::from);
+
+        self.env(var, updater(current_value));
+    }
+
+    fn add_parameter_to_var(&mut self, separator: &str, var: &str, value: &str) {
+        self.update_env_var(var, |prev_var| {
+            if let Some(prev_value) = prev_var {
+                let mut splitted = prev_value.split(separator).collect::<Vec<&str>>();
+                splitted.push(value);
+                splitted.join(separator)
+            } else {
+                return value.to_string();
+            }
+        })
+    }
 }
