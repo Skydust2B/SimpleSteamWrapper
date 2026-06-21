@@ -104,10 +104,21 @@ jobs:
       - name: Getting version
         uses: https://gitea.skydust.fr/actions/get-version@v1
 
-      - name: Create Release
+      - name: Create Gitea Release
         uses: https://gitea.com/actions/gitea-release-action@v1
         with:
           files: release/**/*
           name: "v${{ env.NEW_VERSION }}"
           token: "${{ secrets.CI_TOKEN }}"
+          tag_name: "v${{ env.NEW_VERSION }}"
+
+      - name: Create Github Release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: release/**/*
+          repository: Skydust2B/SimpleSteamWrapper
+          name: "v${{ env.NEW_VERSION }}"
+          generate_release_notes: true
+          make_latest: true
+          token: "${{ secrets.GITHUBPUSHTOKEN }}"
           tag_name: "v${{ env.NEW_VERSION }}"
