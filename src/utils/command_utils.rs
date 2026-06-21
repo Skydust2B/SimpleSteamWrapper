@@ -1,6 +1,5 @@
 use std::process::Command;
 use log::{warn};
-use serde::de::Unexpected::Str;
 use shlex::split;
 use which::which;
 
