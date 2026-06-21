@@ -114,6 +114,8 @@ jobs:
 
       - name: Create Github Release
         uses: softprops/action-gh-release@v3
+        env:
+          GITHUB_API_URL: "https://api.github.com"
         with:
           files: release/**/*
           repository: Skydust2B/SimpleSteamWrapper
