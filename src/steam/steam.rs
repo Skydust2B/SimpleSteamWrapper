@@ -2,28 +2,11 @@ use std::{env, fs};
 use std::path::PathBuf;
 use std::string::ToString;
 use anyhow::{anyhow, Context};
+use log::warn;
 use vdf_reader::entry::{Entry, Table};
 use crate::compatibility_tools::compat_tool::{CompatTool};
 use crate::steam::installed_steam_apps::{get_installed_steam_apps, InstalledSteamApp};
 use crate::runner::runtime::Runtime;
-
-const STEAM_VALID_COMPAT_APPIDS: [&str; 15] = [
-    "2230260", // Proton Next
-    "2180100", // Proton Hotfix
-    "1493710", // Proton Experimental
-    "4628710", // Proton 11.0
-    "3658110", // Proton 10.0
-    "2805730", // Proton 9.0
-    "2348590", // Proton 8.0
-    "1887720", // Proton 7.0
-    "1580130", // Proton 6.3
-    "1420170", // Proton 5.13
-    "1245040", // Proton 5.0
-    "1113280", // Proton 4.11
-    "1054830", // Proton 4.2
-    "961940", // Proton 3.16
-    "858280", // Proton 3.7
-];
 
 pub fn read_vdf(path: &PathBuf) -> anyhow::Result<Table> {
     let text = fs::read_to_string(&path)
@@ -46,43 +29,77 @@ pub fn get_steam_path() -> Option<PathBuf> {
     path
 }
 
-pub fn get_steam_runtime_app(runtime: Runtime) -> Option<InstalledSteamApp> {
-    let steam_apps = get_installed_steam_apps();
-    let app_id = match runtime {
-        Runtime::SteamScout => "1070560",
-        Runtime::SteamSoldier => "1391110",
-        Runtime::SteamSniper => "1628350",
-        _ => panic!("{} is not a steam runtime", runtime)
-    };
-    if let Some(app) = steam_apps.get(app_id) {
-        return Some(app.clone());
+pub fn parse_runtime_from_appid(appid: String) -> anyhow::Result<Runtime> {
+    let app: InstalledSteamApp = get_installed_steam_apps().get(appid.as_str())
+        .ok_or(anyhow!("Can't find steam app {}", appid))?.clone();
+
+    let manifest = read_from_manifest(&app.path.join("toolmanifest.vdf"))?;
+
+    if manifest.compatmanager_layer_name != Some("container-runtime".to_string()) {
+        return Err(anyhow!("Not a container runtime"));
     }
-    None
+
+    let splitted_cmd = manifest.cmd.split(" ").map(|val| val.to_string()).collect::<Vec<String>>();
+
+    Ok(Runtime {
+        path: app.path,
+        cmdline: splitted_cmd,
+        name: app.name.clone()
+    })
 }
 
 pub fn get_steam_compat_tools_path() -> PathBuf {
     PathBuf::from(get_steam_path().unwrap()).join("compatibilitytools.d")
 }
 
-pub fn read_cmd_from_manifest(manifest_path: &PathBuf) -> anyhow::Result<String> {
+struct SteamToolManifest {
+    cmd: String,
+    required_tool_appid: Option<String>,
+    compatmanager_layer_name: Option<String>
+}
+
+fn read_from_manifest(manifest_path: &PathBuf) -> anyhow::Result<SteamToolManifest> {
     let tool_manifest = read_vdf(&manifest_path)?;
 
-    Ok(tool_manifest["manifest"]
+    let cmd = tool_manifest["manifest"]
         .get("commandline")
         .and_then(|v| v.as_str())
         .unwrap_or_else(|| "")
         .to_string()
         .strip_prefix("/").unwrap_or_else(|| "")
-        .to_string())
+        .to_string();
+
+    let required_tool_appid = tool_manifest["manifest"]
+        .get("require_tool_appid")
+        .and_then(|v| v.as_str())
+        .and_then(|v| Some(v.to_string()));
+
+    let compatmanager_layer_name = tool_manifest["manifest"]
+        .get("compatmanager_layer_name")
+        .and_then(|v| v.as_str())
+        .and_then(|v| Some(v.to_string()));
+
+    Ok(SteamToolManifest{
+        cmd,
+        required_tool_appid,
+        compatmanager_layer_name
+    })
 }
 
 pub fn parse_steam_compat_tool_from_app(app: InstalledSteamApp) -> anyhow::Result<CompatTool> {
-    let cmd = read_cmd_from_manifest(&app.path.join("toolmanifest.vdf"))?;
+    let manifest = read_from_manifest(&app.path.join("toolmanifest.vdf"))?;
+
+    if manifest.compatmanager_layer_name != Some("proton".to_string()) {
+        return Err(anyhow!("Not a proton compat tool"));
+    }
+
+    let required_app = manifest.required_tool_appid.and_then(|appid| Some(parse_runtime_from_appid(appid))).transpose()?;
+
     Ok(CompatTool {
         name: app.name.to_string(),
-        dir_path: app.path.to_str().unwrap().to_string(),
-        path: app.path.join(cmd.replace(" %verb%", ""))
-            .to_str().unwrap().to_string()
+        dir_path: app.path,
+        cmd_line: manifest.cmd.split(" ").map(|v| v.to_string()).collect(),
+        required_runtime: required_app
     })
 }
 
@@ -109,13 +126,17 @@ pub fn parse_steam_compat_tool(path: PathBuf) -> anyhow::Result<CompatTool> {
 
     let compat_tool_display_name = compat_tool_data.get("display_name").unwrap().as_str().unwrap_or_else(|| "Borken");
 
-    let cmd = read_cmd_from_manifest(&path.join("toolmanifest.vdf"))?;
+    let manifest = read_from_manifest(&path.join("toolmanifest.vdf"))?;
+    let required_app = manifest.required_tool_appid
+        .and_then(|appid| Some(parse_runtime_from_appid(appid.clone())
+            .inspect_err(|err| warn!("Couldn't parse runtime from appid {}: {}", appid, err))
+            )).transpose()?;
 
     Ok(CompatTool {
         name: compat_tool_display_name.to_string(),
-        dir_path: compat_tool_dir_path.to_str().unwrap().to_string(),
-        path: compat_tool_dir_path.join(cmd.replace(" %verb%", ""))
-            .to_str().unwrap().to_string()
+        dir_path: compat_tool_dir_path,
+        cmd_line: manifest.cmd.split(" ").map(|v| v.to_string()).collect(),
+        required_runtime: required_app
     })
 }
 
@@ -136,14 +157,12 @@ pub fn list_steam_compat_tools() -> Vec<CompatTool> {
     }
 
     let steam_apps = get_installed_steam_apps();
-    STEAM_VALID_COMPAT_APPIDS.iter().for_each(|app_id| {
-        if let Some(app) = steam_apps.get(&app_id.to_string()) {
-            if let Ok(steam_compat_tool) = parse_steam_compat_tool_from_app(app.clone()) {
-                results.push(steam_compat_tool);
-            }
+    steam_apps.iter().for_each(|(_, app)| {
+        let compat_tool = parse_steam_compat_tool_from_app(app.clone());
+        if let Ok(compat_tool) = compat_tool {
+            results.push(compat_tool);
         }
     });
-
     results
 }
 

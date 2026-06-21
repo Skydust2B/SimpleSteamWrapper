@@ -2,12 +2,15 @@ use std::path::PathBuf;
 use log::{info, warn};
 use crate::compatibility_tools::compat_tools_list::{CompatToolsList};
 use crate::config::global_config::{GlobalConfig};
+use crate::runner::game_process_wrapper::RunVerb;
+use crate::runner::runtime::Runtime;
 
 #[derive(Debug, Clone)]
 pub struct CompatTool {
     pub name: String,
-    pub dir_path: String,
-    pub path: String
+    pub dir_path: PathBuf,
+    pub cmd_line: Vec<String>,
+    pub required_runtime: Option<Runtime>
 }
 
 impl CompatTool {
@@ -20,6 +23,17 @@ impl CompatTool {
         ];
 
         candidates.into_iter().find(|p| p.exists())
+    }
+
+    pub fn get_exec_path(&self) -> PathBuf {
+        self.dir_path.join(self.cmd_line[0].as_str())
+    }
+
+    pub fn get_full_command(&self, verb: RunVerb) -> Vec<String> {
+        let exec_path = self.get_exec_path();
+        let mut command = vec![exec_path.to_str().expect("Unable to parse the full command").to_string()];
+        command.extend_from_slice(&self.cmd_line[1..]);
+        command.iter().map(|v| v.replace("%verb%", &verb.to_string())).collect()
     }
 }
 

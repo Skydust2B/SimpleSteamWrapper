@@ -1,46 +1,23 @@
+use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
-use strum_macros::{Display, EnumString, VariantArray};
-use crate::runner::game_process_wrapper::{get_run_verb, RunVerb};
-use crate::steam::steam::get_steam_runtime_app;
+use crate::runner::game_process_wrapper::RunVerb;
 
-#[derive(Debug, EnumString, VariantArray, Serialize, Deserialize, Clone, PartialEq, Display)]
-pub enum Runtime {
-    None,
-    SteamScout,
-    SteamSoldier,
-    SteamSniper
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct Runtime {
+    pub path: PathBuf,
+    pub cmdline: Vec<String>,
+    pub name: String
 }
 
 impl Runtime {
-    pub fn get_runtime_entrypoint(&self) -> Vec<String> {
-        let runtime_verb = get_run_verb().unwrap_or(RunVerb::Run);
+    pub fn get_exec_path(&self) -> PathBuf {
+        self.path.join(self.cmdline[0].as_str())
+    }
 
-        let runtime_path = match self {
-            Runtime::SteamScout => {
-                Some(get_steam_runtime_app(self.clone())
-                    .expect("Unable to get runtime entrypoint")
-                    .path.join("_v2-entry-point"))
-            }
-            Runtime::SteamSoldier => {
-                Some(get_steam_runtime_app(self.clone())
-                    .expect("Unable to get runtime entrypoint")
-                    .path.join("_v2-entry-point"))
-            }
-            Runtime::SteamSniper => {
-                Some(get_steam_runtime_app(self.clone())
-                    .expect("Unable to get runtime entrypoint")
-                    .path.join("_v2-entry-point"))
-            },
-            Runtime::None => None,
-        };
-
-        if let Some(runtime_path) = runtime_path {
-            return vec![
-                runtime_path.to_str().unwrap().to_string(),
-                format!("--verb={}", runtime_verb),
-                "--".to_string()
-            ]
-        }
-        Vec::new()
+    pub fn get_full_command(&self, verb: RunVerb) -> Vec<String> {
+        let exec_path = self.get_exec_path();
+        let mut command = vec![exec_path.to_str().expect("Unable to parse the full command").to_string()];
+        command.extend_from_slice(&self.cmdline[1..]);
+        command.iter().map(|v| v.replace("%verb%", &verb.to_string())).collect()
     }
 }

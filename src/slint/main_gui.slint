@@ -25,8 +25,8 @@ export component MainGUI inherits Window {
 
     in property <string> game_app_id: "0";
 
-    in-out property <int> selected_runtime;
-    in property <[string]> runtimes;
+    callback on_compat_tool_change(int);
+    in property <string> current_runtime: "None";
 
     pure callback show_download_runner();
     pure callback show_prefix_options();
@@ -46,30 +46,26 @@ export component MainGUI inherits Window {
             VerticalBox {
                 alignment: start;
 
-                Text { text: "Choose runner"; }
+                HorizontalLayout {
+                    alignment: space-between;
+                    Text { text: "Choose runner"; }
+                    Text {
+                        text: "Runtime: "+ current_runtime;
+                     }
+                }
 
                 HorizontalBox {
                     ComboBox {
                         model: root.compat_tools;
                         current-index <=> selected_compat_tool_index;
-                        selected(current-value) => { AppConf.set_opt_str("compat_tool", current-value) }
+                        selected(current-value) => {
+                            AppConf.set_opt_str("compat_tool", current-value);
+                            on_compat_tool_change(self.current-index);
+                        }
                     }
                     Button {
                         text: "↓";
                         clicked => { show_download_runner(); }
-                    }
-                }
-
-                HorizontalLayout {
-                    spacing: 10px;
-                    Text {
-                        vertical-alignment: center;
-                        text: "Runtime (Choose sniper if unsure)";
-                     }
-                    ComboBox {
-                        model: root.runtimes;
-                        current-index <=> selected_runtime;
-                        selected(current-value) => { AppConf.set_opt_str("runtime", current-value) }
                     }
                 }
 

@@ -69,13 +69,11 @@ pub fn run_game_process(compat_tool: CompatTool) -> Option<std::process::ExitSta
         wrapper_prepared_command.extend_from_slice(prepared_command.command_prefixes.as_slice());
     }
 
-    let runtime = app_config.clone().runtime;
-    wrapper_prepared_command.extend_from_slice(runtime.get_runtime_entrypoint().as_slice());
+    if let Some(required_runtime) = compat_tool.clone().required_runtime {
+        wrapper_prepared_command.extend_from_slice(required_runtime.get_full_command(run_verb.clone()).as_slice())
+    }
 
-    wrapper_prepared_command.extend_from_slice(&[
-        compat_tool.path.to_string(),
-        run_verb.to_string()
-    ]);
+    wrapper_prepared_command.extend_from_slice(compat_tool.get_full_command(run_verb).as_slice());
 
     wrapper_prepared_command.extend_from_slice(prepared_command.arguments.as_slice());
 
