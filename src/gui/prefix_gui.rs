@@ -8,7 +8,7 @@ use crate::utils::command_utils::parse_cmdline;
 use crate::compatibility_tools::compat_tool::{get_compat_tool_from_config};
 use crate::compatibility_tools::app_prefix::{AppPrefix};
 use crate::gui::dialog::show_message_dialog;
-use crate::PrefixSettingsGUI;
+use crate::{ConfirmDialog, PrefixSettingsGUI};
 use crate::steam::steam::get_steam_env_app_id;
 
 pub fn show_gui() {
@@ -79,27 +79,57 @@ pub fn show_gui() {
         let weak_window = window.as_weak();
         let shared_pfx_ref = shared_pfx_ref.clone();
         move || {
-            let weak_window = weak_window.clone();
-            let shared_pfx_ref = shared_pfx_ref.clone();
-
             let cfg_compat_tool = get_compat_tool_from_config();
             if cfg_compat_tool.is_none() {
                 show_message_dialog("No compat tool selected.");
                 return;
             }
 
-            tokio::spawn(async move {
-                let borrowed_pfx_ref = shared_pfx_ref.lock().await;
-                let reset = borrowed_pfx_ref.reset_prefix(&cfg_compat_tool.unwrap()).await;
-                if reset.is_ok() {
-                    show_message_dialog("Successfully recreated prefix");
-                } else {
-                    show_message_dialog("Failed to recreated prefix");
+            let dialog_window = ConfirmDialog::new().unwrap();
+            dialog_window.set_text("THIS COULD DELETE YOUR LOCAL AND CLOUD SAVE !\nAre you sure you want to do this ?".into());
+
+            let dialog_window_clone = dialog_window.as_weak();
+            dialog_window.on_yes_clicked({
+                let inner_weak_window = weak_window.clone();
+                let shared_pfx_ref = shared_pfx_ref.clone();
+
+                move || {
+                    let _ = dialog_window_clone.upgrade_in_event_loop(|w| {
+                        let _ = w.hide();
+                    });
+                    let inner_weak_window = inner_weak_window.clone();
+                    let shared_pfx_ref = shared_pfx_ref.clone();
+                    let cfg_compat_tool = cfg_compat_tool.clone();
+
+                    tokio::spawn(async move {
+                        let borrowed_pfx_ref = shared_pfx_ref.lock().await;
+                        let reset = borrowed_pfx_ref.reset_prefix(&cfg_compat_tool.unwrap()).await;
+                        if reset.is_ok() {
+                            show_message_dialog("Successfully recreated prefix");
+                        } else {
+                            show_message_dialog("Failed to recreated prefix");
+                        }
+                        let _ = inner_weak_window.upgrade_in_event_loop(|w| {
+                            w.set_recreating_prefix(false);
+                        });
+                    });
                 }
-                let _ = weak_window.upgrade_in_event_loop(|window| {
-                    window.set_recreating_prefix(false);
-                });
             });
+
+            dialog_window.on_no_clicked({
+                let dialog_window_clone = dialog_window.as_weak();
+                let weak_window = weak_window.clone();
+                move || {
+                    let _ = dialog_window_clone.upgrade_in_event_loop(|w| {
+                        let _ = w.hide();
+                    });
+                    let _ = weak_window.upgrade_in_event_loop(|w| {
+                        w.set_recreating_prefix(false);
+                    });
+                }
+            });
+
+            let _ = dialog_window.show();
         }
     });
 

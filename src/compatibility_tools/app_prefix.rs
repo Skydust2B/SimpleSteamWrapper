@@ -65,7 +65,7 @@ impl AppPrefix {
     
     pub async fn reset_prefix(&self, compat_tool: &CompatTool) -> io::Result<ExitStatus> {
         let prefix_top_folder = self.as_path();
-        // TODO: Add a warning, this can destroy your cloud saves
+        
         info!("Recreating prefix with {} at {}", compat_tool.name, prefix_top_folder.display());
         if prefix_top_folder.exists() {
             info!("Removing prefix {}", prefix_top_folder.display());

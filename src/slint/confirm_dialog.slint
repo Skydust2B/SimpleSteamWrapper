@@ -1,0 +1,24 @@
+import { Button, StandardButton, VerticalBox } from "std-widgets.slint";
+
+export component ConfirmDialog inherits Dialog {
+    in property <string> text;
+    title: "Simple Steam Wrapper";
+
+    VerticalBox {
+        Text {
+            horizontal-alignment: center;
+
+            text <=> text;
+        }
+    }
+
+    StandardButton{
+        accessible-role: AccessibleRole.button;
+        kind: yes;
+    }
+
+    StandardButton {
+        accessible-role: AccessibleRole.button;
+        kind: no;
+    }
+}

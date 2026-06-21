@@ -1,9 +1,11 @@
 use slint::ComponentHandle;
+use crate::ConfirmDialog;
 use crate::install::install::install_or_update;
-use crate::InstallerWindow;
 
 pub fn show_install_modal() {
-    let window = InstallerWindow::new().unwrap();
+    let window = ConfirmDialog::new().unwrap();
+
+    window.set_text("SimpleSteamWrapper not installed in Steam.\nDo you want to add it as a compatibility tool ?".into());
 
     let window_clone = window.as_weak();
     window.on_yes_clicked(move || {
