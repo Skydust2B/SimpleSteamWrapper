@@ -1,10 +1,14 @@
 use std::{env, fs};
 use std::path::PathBuf;
+use std::process::Stdio;
 use std::string::ToString;
 use anyhow::{anyhow, Context};
-use log::warn;
+use log::{error, warn};
+use tokio::process::Command;
 use vdf_reader::entry::{Entry, Table};
+use which::which;
 use crate::compatibility_tools::compat_tool::{CompatTool};
+use crate::gui::dialog::show_message_dialog;
 use crate::steam::installed_steam_apps::{get_installed_steam_apps, InstalledSteamApp};
 use crate::runner::runtime::Runtime;
 
@@ -31,7 +35,11 @@ pub fn get_steam_path() -> Option<PathBuf> {
 
 pub fn parse_runtime_from_appid(appid: String) -> anyhow::Result<Runtime> {
     let app: InstalledSteamApp = get_installed_steam_apps().get(appid.as_str())
-        .ok_or(anyhow!("Can't find steam app {}", appid))?.clone();
+        .ok_or_else(|| {
+            let _ = install_steam_app(appid.as_str());
+            show_message_dialog("Couldn't find runtime on the system.\nWait for it to finish installation, then retry.");
+            anyhow!("Can't find steam app {}", appid)
+        })?.clone();
 
     let manifest = read_from_manifest(&app.path.join("toolmanifest.vdf"))?;
 
@@ -164,6 +172,20 @@ pub fn list_steam_compat_tools() -> Vec<CompatTool> {
         }
     });
     results
+}
+
+pub fn install_steam_app(app_id: &str) -> anyhow::Result<()> {
+    let steam_bin = which("steam");
+    if let Ok(steam_bin) = steam_bin {
+        Command::new(steam_bin)
+            .arg(&format!("steam://install/{}", app_id))
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .spawn()?;
+        return Ok(())
+    }
+    error!("Unable to find steam binary from PATH");
+    Err(anyhow!("Unable to find steam binary"))
 }
 
 pub fn get_steam_env_app_id() -> Result<String, env::VarError> {
