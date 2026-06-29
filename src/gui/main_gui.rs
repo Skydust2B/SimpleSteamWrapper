@@ -5,10 +5,10 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use serde_yaml::{Value};
-use slint::{ComponentHandle, VecModel, Weak};
+use slint::{ComponentHandle, ToSharedString, VecModel, Weak};
 use tokio::time::{interval};
 use crate::{AppConf, EnvVar, EnvVarsSettings, GUIGPUVendor, HardRefresh, MainGUI};
-use crate::compatibility_tools::compat_tool::{get_compat_tool_from_config, CompatTool};
+use crate::compatibility_tools::compat_tool::{get_compat_tool_from_config, CompatTool, CompatToolType};
 use crate::compatibility_tools::compat_tools_list::{CompatToolsList};
 use crate::config::global_config::GlobalConfig;
 use crate::config::serialized_config_utils::{SerializedConfig};
@@ -16,7 +16,7 @@ use crate::gpu_tools::gpu::{GPU};
 use crate::gpu_tools::gpu_list::GPUList;
 use crate::gui::dialog::show_message_dialog;
 use crate::gui::globals::init_hard_refresh::WindowForceRefresh;
-use crate::install::install::{install_or_update, SIMPLE_STEAM_WRAPPER_NAME};
+use crate::install::install::{install_or_update};
 use crate::steam::steam::get_steam_env_app_id;
 use crate::utils::find_index::{FindIndex};
 use crate::utils::slint_utils::{ClonableModel, WeakUtils};
@@ -26,7 +26,7 @@ fn init_gui_with_conf(window: &MainGUI, shared_config: Arc<Mutex<SerializedConfi
     let full_compat_tools = CompatToolsList::get();
     let compat_tools = full_compat_tools
         .iter()
-        .filter(|ct| ct.name != SIMPLE_STEAM_WRAPPER_NAME)
+        .filter(|ct| ct.compat_type != CompatToolType::SimpleSteamWrapper)
         .collect::<Vec<&CompatTool>>();
     let compat_tools_model: ClonableModel<&CompatTool> = ClonableModel::new(compat_tools);
     window.set_compat_tools(compat_tools_model.to_model_rc(|ct| ct.name.clone()));
@@ -36,10 +36,14 @@ fn init_gui_with_conf(window: &MainGUI, shared_config: Arc<Mutex<SerializedConfi
         .and_then(|cct| compat_tools_model.find_index(|ct| ct.name == cct.name))
         .unwrap_or(0);
 
-    let initial_runtime_name = initial_compat_tool
+    let initial_runtime_name = initial_compat_tool.clone()
         .and_then(|ct| ct.required_runtime)
         .and_then(|v| Some(v.name))
         .unwrap_or("None".to_string());
+
+    let initial_compat_tool_type = initial_compat_tool
+        .and_then(|ct| Some(ct.compat_type))
+        .unwrap_or(CompatToolType::Proton);
 
     // GPU List
     let gpus = GPUList::get();
@@ -53,6 +57,7 @@ fn init_gui_with_conf(window: &MainGUI, shared_config: Arc<Mutex<SerializedConfi
     // Workaround: https://github.com/slint-ui/slint/issues/7632
     let _ = window.as_weak().upgrade_in_event_loop(move |w| {
         w.set_current_runtime(initial_runtime_name.into());
+        w.set_compat_tool_type(initial_compat_tool_type.to_shared_string());
         w.set_selected_compat_tool_index(initial_compat_tool_index);
         w.set_selected_gpu_index(initial_gpu_index);
         w.invoke_on_gpu_update(initial_gpu_index);
@@ -139,9 +144,12 @@ pub fn show_main_gui() -> bool {
             shared_config.lock().unwrap().update_global_config();
             let compat_tool = get_compat_tool_from_config();
             if let Some(compat_tool) = compat_tool {
-                weak_window.upgrade_and_run(|w| w.set_current_runtime(compat_tool.required_runtime
-                    .and_then(|r| Some(r.name))
-                    .unwrap_or("None".to_string()).into()))
+                weak_window.upgrade_and_run(|w| {
+                    w.set_current_runtime(compat_tool.required_runtime
+                        .and_then(|r| Some(r.name))
+                        .unwrap_or("None".to_string()).into());
+                    w.set_compat_tool_type(compat_tool.compat_type.to_shared_string());
+                })
             }
         }
     });

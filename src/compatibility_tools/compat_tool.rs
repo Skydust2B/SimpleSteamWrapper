@@ -1,12 +1,22 @@
 use std::path::PathBuf;
 use log::{info, warn};
+use strum_macros::{Display, EnumString, VariantArray};
 use crate::compatibility_tools::compat_tools_list::{CompatToolsList};
 use crate::config::global_config::{GlobalConfig};
 use crate::runner::game_process_wrapper::RunVerb;
 use crate::runner::runtime::Runtime;
 
+#[derive(Debug, EnumString, VariantArray, Clone, PartialEq, Display)]
+#[strum(serialize_all = "kebab-case")]
+pub enum CompatToolType {
+    SimpleSteamWrapper,
+    Proton,
+    ScoutInContainer
+}
+
 #[derive(Debug, Clone)]
 pub struct CompatTool {
+    pub compat_type: CompatToolType,
     pub name: String,
     pub dir_path: PathBuf,
     pub cmd_line: Vec<String>,
@@ -15,6 +25,9 @@ pub struct CompatTool {
 
 impl CompatTool {
     pub fn find_wine_bin(&self) -> Option<PathBuf> {
+        if self.compat_type != CompatToolType::Proton {
+            return None;
+        }
         let dir_path = PathBuf::from(self.clone().dir_path);
         let candidates = [
             dir_path.join("files/bin/wine"),

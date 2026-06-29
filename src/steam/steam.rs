@@ -1,14 +1,16 @@
 use std::{env, fs};
 use std::path::PathBuf;
 use std::process::Stdio;
+use std::str::FromStr;
 use std::string::ToString;
 use anyhow::{anyhow, Context};
 use log::{error, warn};
 use tokio::process::Command;
 use vdf_reader::entry::{Entry, Table};
 use which::which;
-use crate::compatibility_tools::compat_tool::{CompatTool};
+use crate::compatibility_tools::compat_tool::{CompatTool, CompatToolType};
 use crate::gui::dialog::show_message_dialog;
+use crate::install::install::SIMPLE_STEAM_WRAPPER_INTERNAL_NAME;
 use crate::steam::installed_steam_apps::{get_installed_steam_apps, InstalledSteamApp};
 use crate::runner::runtime::Runtime;
 
@@ -96,27 +98,41 @@ fn read_from_manifest(manifest_path: &PathBuf) -> anyhow::Result<SteamToolManife
 
 pub fn parse_steam_compat_tool_from_app(app: InstalledSteamApp) -> anyhow::Result<CompatTool> {
     let manifest = read_from_manifest(&app.path.join("toolmanifest.vdf"))?;
+    let compat_layer_type = CompatToolType::from_str(&manifest.compatmanager_layer_name.unwrap_or_default())?;
 
-    if manifest.compatmanager_layer_name != Some("proton".to_string()) {
-        return Err(anyhow!("Not a proton compat tool"));
+    if ![CompatToolType::Proton, CompatToolType::ScoutInContainer].contains(&compat_layer_type) {
+        return Err(anyhow!("Not a proton/linux compat tool"));
     }
 
     let required_app = manifest.required_tool_appid.and_then(|appid| Some(parse_runtime_from_appid(appid))).transpose()?;
 
     Ok(CompatTool {
-        name: app.name.to_string(),
+        name: {
+            if compat_layer_type == CompatToolType::ScoutInContainer {
+                "Steam Linux Runtime".to_string()
+            } else {
+                app.name.to_string()
+            }
+        },
         dir_path: app.path,
         cmd_line: manifest.cmd.split(" ").map(|v| v.to_string()).collect(),
-        required_runtime: required_app
+        required_runtime: required_app,
+        compat_type: compat_layer_type,
     })
 }
 
 pub fn parse_steam_compat_tool(path: PathBuf) -> anyhow::Result<CompatTool> {
     let compat_tool_vdf = read_vdf(&path.join("compatibilitytool.vdf"))?;
+    let compat_tool_internal_name: &String = compat_tool_vdf["compatibilitytools"]
+        .get("compat_tools")
+        .and_then(|v| v.as_table())
+        .and_then(|v| v.keys().next())
+        .unwrap();
+
     let compat_tool_data: &Entry = compat_tool_vdf["compatibilitytools"]
         .get("compat_tools")
         .and_then(|v| v.as_table())
-        .and_then(|v| v.values().next())
+        .and_then(|v| v.get(compat_tool_internal_name))
         .unwrap();
 
     if let Some(osfrom) = compat_tool_data.get("from_oslist") {
@@ -133,17 +149,31 @@ pub fn parse_steam_compat_tool(path: PathBuf) -> anyhow::Result<CompatTool> {
     ).canonicalize()?;
 
     let compat_tool_display_name = compat_tool_data.get("display_name").unwrap().as_str().unwrap_or_else(|| "Borken");
-
     let manifest = read_from_manifest(&path.join("toolmanifest.vdf"))?;
+    let cmd_line = manifest.cmd.split(" ").map(|v| v.to_string()).collect();
+
+    if compat_tool_internal_name == SIMPLE_STEAM_WRAPPER_INTERNAL_NAME {
+        return Ok(CompatTool {
+            compat_type: CompatToolType::SimpleSteamWrapper,
+            name: compat_tool_display_name.to_string(),
+            dir_path: compat_tool_dir_path,
+            cmd_line,
+            required_runtime: None
+        })
+    }
+
+    let compat_layer_type = CompatToolType::from_str(&manifest.compatmanager_layer_name.unwrap_or_default())?;
+
     let required_app = manifest.required_tool_appid
         .and_then(|appid| Some(parse_runtime_from_appid(appid.clone())
             .inspect_err(|err| warn!("Couldn't parse runtime from appid {}: {}", appid, err))
             )).transpose()?;
 
     Ok(CompatTool {
+        compat_type: compat_layer_type,
         name: compat_tool_display_name.to_string(),
         dir_path: compat_tool_dir_path,
-        cmd_line: manifest.cmd.split(" ").map(|v| v.to_string()).collect(),
+        cmd_line,
         required_runtime: required_app
     })
 }

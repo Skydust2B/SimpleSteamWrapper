@@ -12,7 +12,7 @@ const TOOL_MANIFEST_VDF: &str = r#""manifest"
 "#;
 
 // We need to keep Proton in the string for steam cloud sync to work
-const SIMPLE_STEAM_WRAPPER_INTERNAL_NAME: &str = "Proton-SimpleSteamWrapper";
+pub const SIMPLE_STEAM_WRAPPER_INTERNAL_NAME: &str = "Proton-SimpleSteamWrapper";
 
 pub const SIMPLE_STEAM_WRAPPER_NAME: &str = "SimpleSteamWrapper";
 

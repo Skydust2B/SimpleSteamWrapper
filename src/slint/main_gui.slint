@@ -27,6 +27,7 @@ export component MainGUI inherits Window {
 
     callback on_compat_tool_change(int);
     in property <string> current_runtime: "None";
+    in property <string> compat_tool_type: "proton";
 
     pure callback show_download_runner();
     pure callback show_prefix_options();
@@ -195,7 +196,7 @@ export component MainGUI inherits Window {
                         HardRefresh.force_refresh();
                     }
                 }
-                Button {
+                if compat_tool_type == "proton": Button {
                     text: "Show prefix options";
                     clicked => { show_prefix_options() }
                 }
