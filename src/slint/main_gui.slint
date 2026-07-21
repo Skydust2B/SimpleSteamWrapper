@@ -42,6 +42,7 @@ export component MainGUI inherits Window {
     callback enable_setting_key();
 
     if(HardRefresh.refresh): VerticalBox {
+        spacing: 0;
         ScrollView {
             viewport-width: self.width;
             VerticalBox {
@@ -96,7 +97,7 @@ export component MainGUI inherits Window {
                     }
                     HorizontalLayout {
                         nvapi := CheckBox {
-                            text: "Use NVAPI extensions";
+                            text: "Use NVAPI extensions *";
                             checked: AppConf.get_opt_bool("enabled_tweaks.proton_nvapi");
                             toggled => {
                                 if (!self.checked) {
@@ -106,7 +107,7 @@ export component MainGUI inherits Window {
                             }
                         }
                         if (nvapi.checked): CheckBox {
-                            text: "VKReflex";
+                            text: "VKReflex *";
                             checked: AppConf.get_opt_bool("enabled_tweaks.proton_nvapi_vkreflex");
                             toggled => { AppConf.set_opt_bool("enabled_tweaks.proton_nvapi_vkreflex", self.checked); }
                         }
@@ -121,7 +122,7 @@ export component MainGUI inherits Window {
 
                 HorizontalLayout {
                     proton_wayland := CheckBox {
-                        text: "Enable wayland support (GE-Proton/proton-cachyos)";
+                        text: "Enable wayland support *";
                         checked: AppConf.get_opt_bool("enabled_tweaks.proton_wayland");
                         toggled => {
                             AppConf.set_opt_bool("enabled_tweaks.proton_wayland", self.checked);
@@ -131,10 +132,15 @@ export component MainGUI inherits Window {
                         }
                     }
                     if proton_wayland.checked: CheckBox {
-                        text: "Enable HDR";
+                        text: "Enable HDR *";
                         checked: AppConf.get_opt_bool("enabled_tweaks.proton_wayland_hdr");
                         toggled => { AppConf.set_opt_bool("enabled_tweaks.proton_wayland_hdr", self.checked); }
                     }
+                }
+                CheckBox {
+                    text: "Prefer SDL * (Can allow controllers to work in wayland native)";
+                    checked: AppConf.get_opt_bool("enabled_tweaks.proton_prefer_sdl");
+                    toggled => { AppConf.set_opt_bool("enabled_tweaks.proton_prefer_sdl", self.checked); }
                 }
 
                 gamescope_check := CheckBox {
@@ -177,6 +183,11 @@ export component MainGUI inherits Window {
                 }
 
                 if(custom_env_vars.checked): EnvVarsEditor {}
+            }
+        }
+        VerticalBox {
+            Text {
+                text: "* Only useful for GE-Proton or proton-cachyos";
             }
         }
         VerticalBox {
