@@ -9,7 +9,7 @@ device_query = "4.0.1"
 vdf-reader = "0.3.3"
 log = "0.4.32"
 tracing-subscriber = { version = "0.3.23", default-features = true, features = ["fmt", "env-filter"] }
-pci-info = { version = "0.3.4", default-features = false }
+pci-info = { version = "0.4.0", default-features = false }
 pci-ids = "0.2.6"
 regex = "1.12.4"
 directories = "6.0.0"
@@ -18,7 +18,7 @@ serde_yaml = "0.9.34"
 inventory = "0.3.24"
 once_cell = "1.21.4"
 anyhow = "1.0.102"
-slint = { version = "1.16.1", default-features = false, features = ["compat-1-2", "renderer-winit-skia", "backend-winit"] }
+slint = { version = "1.17.1", default-features = false, features = ["compat-1-2", "renderer-winit-skia", "backend-winit"] }
 rfd = "0.17.2"
 tokio = { version = "1.52.3", features = ["rt", "rt-multi-thread", "macros", "process", "fs", "sync"] }
 rustls = { version = "0.23.40", default-features = false, features = ["ring"] }
@@ -40,7 +40,7 @@ chrono = { version = "0.4.45", features = ["default", "serde"] }
 rustc-wrapper = "sccache"
 
 [build-dependencies]
-slint-build = "1.12.1"
+slint-build = "1.17.1"
 
 [profile.release]
 lto = "fat"
