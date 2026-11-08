@@ -19,7 +19,7 @@ inventory = "0.3.24"
 once_cell = "1.21.4"
 anyhow = "1.0.102"
 slint = { version = "1.17.1", default-features = false, features = ["compat-1-2", "renderer-winit-skia", "backend-winit"] }
-rfd = "0.17.2"
+rfd = "0.18.0"
 tokio = { version = "1.52.3", features = ["rt", "rt-multi-thread", "macros", "process", "fs", "sync"] }
 rustls = { version = "0.23.40", default-features = false, features = ["ring"] }
 which = "8.0.3"
